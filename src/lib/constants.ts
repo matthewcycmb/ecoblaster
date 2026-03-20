@@ -27,8 +27,8 @@ export const EASY_SPEED_MULT = 0.6;    // easy mode multiplies depthSpeedPerSec 
 // Gameplay
 export const DAMAGE_PER_HIT = 20;
 export const INITIAL_HEALTH = 100;
-export const FLICK_THRESHOLD = -0.02;
-export const DEFAULT_COOLDOWN_MS = 400;
+export const FLICK_THRESHOLD = -0.012;
+export const DEFAULT_COOLDOWN_MS = 250;
 export const MUZZLE_FLASH_DURATION_MS = 100;
 export const WAVE_COUNTDOWN_MS = 800;
 export const HIT_TOAST_DURATION_MS = 800;
@@ -74,8 +74,8 @@ export const EXPLODER_DAMAGE_RADIUS = 100;
 // Boss
 export const BOSS_SPEED_MULT = 0.4;
 export const BOSS_SIZE_MULT = 2.5;
-export const BOSS_BASE_HP = 15;
-export const BOSS_HP_PER_WAVE = 3;
+export const BOSS_BASE_HP = 6;
+export const BOSS_HP_PER_WAVE = 1;
 export const BOSS_WAVE_INTERVAL = 5;
 export const BOSS_WAVE_REGULAR_ZOMBIE_FRACTION = 0.4;
 

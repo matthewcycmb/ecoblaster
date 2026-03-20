@@ -26,8 +26,8 @@ export default function GameOverModal({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
-      <div className="bg-[#0a1628]/95 border border-red-500/25 rounded-xl p-8 shadow-[0_0_40px_rgba(255,90,95,0.12)] backdrop-blur-sm flex flex-col items-center gap-6 min-w-[340px]">
-        <h2 className="text-3xl font-bold text-red-400">Reef Destroyed</h2>
+      <div className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col items-center gap-6 min-w-[340px]">
+        <h2 className="text-3xl font-bold text-cyan-400">Reef Destroyed</h2>
         <p className="text-lg text-white/80">
           Trash cleaned: <span className="font-mono font-bold text-2xl text-cyan-400">{score.toLocaleString()}</span>
         </p>

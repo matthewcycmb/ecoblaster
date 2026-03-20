@@ -37,13 +37,13 @@ export default function SettingsModal({
   );
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50">
-      <div className="bg-white rounded-xl p-8 shadow-2xl flex flex-col gap-6 min-w-[360px] max-w-[420px]">
-        <h2 className="text-2xl font-bold text-game-primary">Settings</h2>
+    <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
+      <div className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col gap-6 min-w-[340px] max-w-[420px]">
+        <h2 className="text-2xl font-bold text-cyan-400">Settings</h2>
 
         {/* Sensitivity */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-game-text">
+          <label className="text-sm font-medium text-white/80">
             Sensitivity
           </label>
           <input
@@ -56,9 +56,9 @@ export default function SettingsModal({
               const val = -0.06 + (pct / 100) * (-0.005 - -0.06);
               setSettings((s) => ({ ...s, sensitivity: val }));
             }}
-            className="w-full accent-game-primary"
+            className="w-full accent-cyan-500"
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-white/40">
             Higher = easier to trigger flick. Current threshold:{" "}
             {settings.sensitivity.toFixed(4)}
           </p>
@@ -66,7 +66,7 @@ export default function SettingsModal({
 
         {/* Flick Cooldown */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-game-text">
+          <label className="text-sm font-medium text-white/80">
             Flick Cooldown (ms)
           </label>
           <input
@@ -81,16 +81,16 @@ export default function SettingsModal({
                 flickCooldownMs: Number(e.target.value),
               }))
             }
-            className="w-full accent-game-primary"
+            className="w-full accent-cyan-500"
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-white/40">
             {settings.flickCooldownMs}ms between shots
           </p>
         </div>
 
         {/* Difficulty */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-game-text">
+          <label className="text-sm font-medium text-white/80">
             Difficulty
           </label>
           <div className="flex gap-2">
@@ -100,8 +100,8 @@ export default function SettingsModal({
                 onClick={() => setSettings((s) => ({ ...s, difficulty: d }))}
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors capitalize ${
                   settings.difficulty === d
-                    ? "bg-game-primary text-white"
-                    : "bg-gray-100 text-game-text hover:bg-gray-200"
+                    ? "bg-cyan-600/90 border border-cyan-500/50 text-white"
+                    : "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10"
                 }`}
               >
                 {d}
@@ -112,13 +112,13 @@ export default function SettingsModal({
 
         {/* Mute toggle */}
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-game-text">
+          <label className="text-sm font-medium text-white/80">
             Mute Audio
           </label>
           <button
             onClick={() => setSettings((s) => ({ ...s, muted: !s.muted }))}
             className={`w-12 h-6 rounded-full transition-colors relative ${
-              settings.muted ? "bg-gray-300" : "bg-game-primary"
+              settings.muted ? "bg-white/20" : "bg-cyan-500"
             }`}
           >
             <div
@@ -133,13 +133,13 @@ export default function SettingsModal({
         <div className="flex gap-3">
           <button
             onClick={handleSave}
-            className="flex-1 rounded-lg bg-game-primary px-6 py-3 text-white font-semibold hover:bg-game-primary/90 transition-colors"
+            className="flex-1 rounded-lg bg-cyan-600/90 border border-cyan-500/50 px-6 py-3 text-white font-semibold hover:bg-cyan-500/90 transition-colors"
           >
             Save Settings
           </button>
           <button
             onClick={handleReset}
-            className="flex-1 rounded-lg bg-white px-6 py-3 text-game-primary font-semibold border border-game-primary hover:bg-gray-50 transition-colors"
+            className="flex-1 rounded-lg bg-white/5 border border-white/15 px-6 py-3 text-white/80 font-semibold hover:bg-white/10 transition-colors"
           >
             Reset to Default
           </button>

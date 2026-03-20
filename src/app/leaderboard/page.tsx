@@ -91,13 +91,13 @@ export default function LeaderboardPage() {
       <div className="flex gap-4">
         <Link
           href="/"
-          className="rounded-lg bg-white/60 px-6 py-3 text-game-primary font-semibold border border-game-primary/50 hover:bg-white/80 transition-colors"
+          className="rounded-lg bg-white/5 border border-white/15 px-6 py-3 text-white/90 font-semibold hover:bg-white/10 transition-colors"
         >
           Home
         </Link>
         <Link
           href="/game"
-          className="rounded-lg bg-game-primary px-6 py-3 text-white font-semibold hover:bg-game-primary/90 transition-colors"
+          className="rounded-lg bg-cyan-600/90 border border-cyan-500/50 px-6 py-3 text-white font-semibold hover:bg-cyan-500/90 transition-colors"
         >
           Play
         </Link>
