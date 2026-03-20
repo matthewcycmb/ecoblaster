@@ -32,6 +32,7 @@ import {
   EASY_AUTO_FIRE_INTERVAL_MS,
   HIT_FLASH_DURATION_MS,
   SCREEN_SHAKE_DURATION_MS,
+  WAVE_COUNTDOWN_MS,
 } from "@/lib/constants";
 import {
   playGunshot,
@@ -51,6 +52,7 @@ import PauseModal from "./PauseModal";
 import GameOverModal from "./GameOverModal";
 import WaveCountdown from "./WaveCountdown";
 import TutorialOverlay from "./TutorialOverlay";
+import DifficultyPrompt from "./DifficultyPrompt";
 import type { TrackerStatus, HandTrackerHandle } from "@/components/mediapipe/HandTracker";
 
 const HandTracker = dynamic(
@@ -85,6 +87,9 @@ export default function GameCanvas() {
   const [difficulty, setDifficultyState] = useState<Difficulty>("easy");
   const [showTutorial, setShowTutorial] = useState(false);
   const hasShownTutorialRef = useRef(false);
+  const [showDifficultyPrompt, setShowDifficultyPrompt] = useState(false);
+  const showDifficultyPromptRef = useRef(false);
+  const hasShownDifficultyPromptRef = useRef(false);
 
   // Load player name and difficulty on mount
   useEffect(() => {
@@ -166,9 +171,6 @@ export default function GameCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const settings = settingsRef.current;
-    const config = DIFFICULTY_CONFIGS[settings.difficulty];
-
     const engine = createGameEngine(
       canvas,
       () => stateRef.current,
@@ -181,9 +183,21 @@ export default function GameCanvas() {
         }
         if (newPhase === "wave-countdown") {
           playZombieGroan();
+          // After wave 5: prompt difficulty upgrade (once per session, easy only)
+          if (
+            stateRef.current.wave === 6 &&
+            settingsRef.current.difficulty === "easy" &&
+            !hasShownDifficultyPromptRef.current
+          ) {
+            hasShownDifficultyPromptRef.current = true;
+            stateRef.current.phase = "paused";
+            setPhase("paused");
+            showDifficultyPromptRef.current = true;
+            setShowDifficultyPrompt(true);
+          }
         }
       },
-      config,
+      () => DIFFICULTY_CONFIGS[settingsRef.current.difficulty],
       () => handTrackerRef.current?.getVideo() ?? null,
       () => aimPositionRef.current
     );
@@ -414,7 +428,7 @@ export default function GameCanvas() {
     setHitMarginMultiplier(settings.difficulty === "easy" ? EASY_HIT_MARGIN : 1.0);
     const state = createInitialState();
     state.phase = "wave-countdown";
-    state.waveCountdownUntil = Date.now() + 1500;
+    state.waveCountdownUntil = Date.now() + 800;
     stateRef.current = state;
     setPhase("wave-countdown");
     setHealth(state.health);
@@ -440,7 +454,7 @@ export default function GameCanvas() {
           setShowTutorial(true);
         }
       }
-    }, 1500);
+    }, 800);
   }, []);
 
   const handleSetDifficulty = useCallback((d: Difficulty) => {
@@ -481,6 +495,7 @@ export default function GameCanvas() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "p" || e.key === "P") {
+        if (showDifficultyPromptRef.current) return;
         const state = stateRef.current;
         if (state.phase === "playing") {
           state.phase = "paused";
@@ -498,6 +513,31 @@ export default function GameCanvas() {
   const handleResume = useCallback(() => {
     stateRef.current.phase = "playing";
     setPhase("playing");
+  }, []);
+
+  const handleDifficultyKeepEasy = useCallback(() => {
+    showDifficultyPromptRef.current = false;
+    setShowDifficultyPrompt(false);
+    // Resume into wave-countdown
+    stateRef.current.phase = "wave-countdown";
+    stateRef.current.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
+    setPhase("wave-countdown");
+  }, []);
+
+  const handleDifficultyLevelUp = useCallback(() => {
+    showDifficultyPromptRef.current = false;
+    setShowDifficultyPrompt(false);
+    // Switch to normal difficulty
+    const settings = loadSettings();
+    settings.difficulty = "normal";
+    saveSettings(settings);
+    settingsRef.current = settings;
+    setDifficultyState("normal");
+    setHitMarginMultiplier(1.0);
+    // Resume into wave-countdown
+    stateRef.current.phase = "wave-countdown";
+    stateRef.current.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
+    setPhase("wave-countdown");
   }, []);
 
   const handleRestart = useCallback(() => {
@@ -534,6 +574,8 @@ export default function GameCanvas() {
         <GameHUD
           health={health}
           score={score}
+          wave={wave}
+          isSurgeWave={isSurgeWave}
           onPause={() => {
             stateRef.current.phase = "paused";
             setPhase("paused");
@@ -658,8 +700,16 @@ export default function GameCanvas() {
         <TutorialOverlay />
       )}
 
+      {/* Difficulty upgrade prompt — after wave 5, easy mode only */}
+      {showDifficultyPrompt && (
+        <DifficultyPrompt
+          onKeepEasy={handleDifficultyKeepEasy}
+          onLevelUp={handleDifficultyLevelUp}
+        />
+      )}
+
       {/* Pause modal */}
-      {phase === "paused" && (
+      {phase === "paused" && !showDifficultyPrompt && (
         <PauseModal
           onResume={handleResume}
           onQuit={() => (window.location.href = "/")}

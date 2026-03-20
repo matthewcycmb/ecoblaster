@@ -217,11 +217,11 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
 
   // Concentrated light rays — brighter in center, dimmer at edges
   ctx.save();
-  for (let layer = 0; layer < 6; layer++) {
-    const centerBias = 0.3 + layer * 0.08;
+  for (let layer = 0; layer < 8; layer++) {
+    const centerBias = 0.25 + layer * 0.065;
     const rayX = w * centerBias + Math.sin(t * 0.08 + layer * 1.8) * 25;
     const distFromCenter = Math.abs(rayX - w * 0.5) / (w * 0.5);
-    const intensity = 0.12 * (1 - distFromCenter * 0.7);
+    const intensity = 0.18 * (1 - distFromCenter * 0.7);
     ctx.globalAlpha = intensity;
     const rayW = 30 + layer * 12;
     const rayGrad = ctx.createLinearGradient(rayX, 0, rayX, h * 0.7);
@@ -245,7 +245,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
   ctx.save();
   const spotX = w * 0.5, spotY = h * 0.02;
   const spotGrad = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, h * 0.35);
-  spotGrad.addColorStop(0, "rgba(200, 240, 255, 0.22)");
+  spotGrad.addColorStop(0, "rgba(200, 240, 255, 0.30)");
   spotGrad.addColorStop(0.15, "rgba(150, 220, 245, 0.12)");
   spotGrad.addColorStop(0.4, "rgba(100, 190, 230, 0.04)");
   spotGrad.addColorStop(1, "rgba(60, 150, 200, 0)");
@@ -329,6 +329,17 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
     ctx.lineTo(x, horizonY - ph * wave);
   }
   ctx.lineTo(w, horizonY); ctx.closePath(); ctx.fill();
+
+  // Dark distant rock formation silhouettes (behind existing horizon)
+  ctx.fillStyle = "rgba(0, 15, 30, 0.6)";
+  ctx.beginPath(); ctx.moveTo(0, horizonY);
+  for (let x = 0; x <= w; x += 3) {
+    const ph = 30 + seededRandom(Math.floor(x / 60) + 500) * 55;
+    const wave = 0.5 + 0.5 * Math.sin(x * 0.008 + seededRandom(Math.floor(x / 80) + 600) * 6);
+    ctx.lineTo(x, horizonY - ph * wave);
+  }
+  ctx.lineTo(w, horizonY); ctx.closePath(); ctx.fill();
+
   ctx.restore();
 
   // Sandy seafloor
@@ -347,6 +358,22 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
   ctx.lineTo(w * 0.65, h);
   ctx.quadraticCurveTo(w * 0.52, h * 0.6, w * 0.5, horizonY);
   ctx.closePath(); ctx.fillStyle = "#5a7a60"; ctx.fill(); ctx.restore();
+
+  // Caustic light spots on seafloor
+  ctx.save();
+  for (let i = 0; i < 8; i++) {
+    const spotX = seededRandom(i + 2000) * w;
+    const spotY = horizonY + (h - horizonY) * (0.3 + seededRandom(i + 2100) * 0.5);
+    const spotR = 30 + seededRandom(i + 2200) * 50;
+    const flicker = 0.03 + 0.04 * Math.abs(Math.sin(t * 0.5 + i * 2.1));
+    const causticSpot = ctx.createRadialGradient(spotX, spotY, 0, spotX, spotY, spotR);
+    causticSpot.addColorStop(0, `rgba(100, 200, 220, ${flicker})`);
+    causticSpot.addColorStop(0.5, `rgba(80, 180, 200, ${flicker * 0.5})`);
+    causticSpot.addColorStop(1, "rgba(60, 160, 180, 0)");
+    ctx.fillStyle = causticSpot;
+    ctx.fillRect(spotX - spotR, spotY - spotR, spotR * 2, spotR * 2);
+  }
+  ctx.restore();
 
   drawReefElements(ctx, w, h, horizonY, t, health);
 
@@ -391,7 +418,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
 
   // Dark rock/coral silhouettes — foreground framing on left and right edges
   ctx.save();
-  const edgeW = w * 0.17;
+  const edgeW = w * 0.10;
 
   // Left rock formation
   ctx.beginPath();
@@ -404,8 +431,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
   ctx.lineTo(0, h);
   ctx.closePath();
   const leftGrad = ctx.createLinearGradient(0, 0, edgeW, 0);
-  leftGrad.addColorStop(0, "#000a14");
-  leftGrad.addColorStop(0.5, "#001020");
+  leftGrad.addColorStop(0, "rgba(0, 10, 20, 0.75)");
+  leftGrad.addColorStop(0.6, "rgba(0, 16, 32, 0.35)");
   leftGrad.addColorStop(1, "rgba(0, 16, 32, 0)");
   ctx.fillStyle = leftGrad;
   ctx.fill();
@@ -421,8 +448,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
   ctx.lineTo(w, h);
   ctx.closePath();
   const rightGrad = ctx.createLinearGradient(w, 0, w - edgeW, 0);
-  rightGrad.addColorStop(0, "#000a14");
-  rightGrad.addColorStop(0.5, "#001020");
+  rightGrad.addColorStop(0, "rgba(0, 10, 20, 0.75)");
+  rightGrad.addColorStop(0.6, "rgba(0, 16, 32, 0.35)");
   rightGrad.addColorStop(1, "rgba(0, 16, 32, 0)");
   ctx.fillStyle = rightGrad;
   ctx.fill();
@@ -457,8 +484,8 @@ function drawReefElements(ctx: CanvasRenderingContext2D, w: number, h: number, h
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  // Reef sits in the bottom 15% of canvas
-  const reefTop = h * 0.85;
+  // Reef sits in the bottom 12% of canvas
+  const reefTop = h * 0.88;
   const reefBase = h;
 
   // ─── Helper: draw a branching coral ───
@@ -782,7 +809,7 @@ function drawBottle(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): voi
   const bodyX = -bodyW / 2;
   const bodyY = -bodyH * 0.4;
   const r = bodyW * 0.25;
-  ctx.fillStyle = "rgba(40, 120, 180, 0.75)";
+  ctx.fillStyle = "rgba(60, 150, 200, 0.55)";
   ctx.beginPath();
   ctx.moveTo(bodyX + r, bodyY);
   ctx.lineTo(bodyX + bodyW - r, bodyY);
@@ -815,6 +842,15 @@ function drawBottle(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): voi
     ctx.fillStyle = "rgba(180, 220, 255, 0.25)";
     ctx.fillRect(bodyX + bodyW * 0.1, bodyY + bodyH * 0.3, bodyW * 0.8, bodyH * 0.2);
   }
+
+  // Glass reflection highlight
+  ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+  ctx.fillRect(bodyX + bodyW * 0.1, bodyY + bodyH * 0.05, bodyW * 0.15, bodyH * 0.85);
+  // Bottom inner light
+  ctx.fillStyle = "rgba(100, 200, 255, 0.08)";
+  ctx.beginPath();
+  ctx.ellipse(0, bodyY + bodyH * 0.85, bodyW * 0.35, bodyH * 0.08, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   // Danger glow when close
   if (s > 1.0) {
@@ -864,9 +900,9 @@ function drawBag(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
   ctx.restore(); // end glow
 
   // Handles at the top
-  if (s > 0.2) {
-    ctx.strokeStyle = "rgba(200, 215, 230, 0.35)";
-    ctx.lineWidth = Math.max(1, 2 * s);
+  if (s > 0.15) {
+    ctx.strokeStyle = "rgba(220, 235, 250, 0.5)";
+    ctx.lineWidth = Math.max(1.5, 2.5 * s);
     ctx.lineCap = "round";
     const handleSway = Math.sin(t * 3 + seed) * 3 * s;
     ctx.beginPath(); ctx.moveTo(-bw * 0.08, -bw * 0.25); ctx.quadraticCurveTo(-bw * 0.12 + handleSway, -bw * 0.4, -bw * 0.02, -bw * 0.35); ctx.stroke();
@@ -937,12 +973,39 @@ function drawBarrel(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): voi
     ctx.restore();
   }
 
-  // Hazard symbol (simple)
+  // Rust patches
+  if (s > 0.25) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#8B4513";
+    // Irregular rust spots
+    for (let ri = 0; ri < 3; ri++) {
+      const rx = bodyX + seededRandom(seed + ri * 11 + 50) * bodyW;
+      const ry = bodyY + seededRandom(seed + ri * 11 + 51) * bodyH;
+      const rr = (3 + seededRandom(seed + ri * 11 + 52) * 5) * s;
+      ctx.beginPath();
+      ctx.ellipse(rx, ry, rr, rr * 0.7, seededRandom(seed + ri * 11 + 53) * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Hazard triangle symbol
   if (s > 0.35) {
-    ctx.fillStyle = "rgba(255, 180, 0, 0.6)";
-    ctx.font = `bold ${Math.max(8, 14 * s)}px sans-serif`;
+    const triSize = Math.max(6, 10 * s);
+    const triY = bodyY + bodyH * 0.62;
+    ctx.fillStyle = "rgba(255, 200, 0, 0.7)";
+    ctx.beginPath();
+    ctx.moveTo(0, triY - triSize);
+    ctx.lineTo(triSize * 0.85, triY + triSize * 0.5);
+    ctx.lineTo(-triSize * 0.85, triY + triSize * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    // Exclamation inside
+    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.font = `bold ${Math.max(6, 9 * s)}px sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("!", 0, bodyY + bodyH * 0.65);
+    ctx.fillText("!", 0, triY);
   }
 
   // Danger glow
@@ -983,7 +1046,7 @@ function drawNet(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
   ctx.beginPath();
   ctx.moveTo(0, -dh); ctx.lineTo(dw, 0); ctx.lineTo(0, dh); ctx.lineTo(-dw, 0);
   ctx.closePath();
-  ctx.fillStyle = `rgba(20, 80, 30, ${0.15 + 0.1 * pulse})`;
+  ctx.fillStyle = `rgba(40, 100, 50, ${0.15 + 0.1 * pulse})`;
   ctx.fill();
   ctx.stroke();
 
@@ -1016,6 +1079,21 @@ function drawNet(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
           ctx.beginPath(); ctx.arc(fx * dw, fy * dh, 2 * s, 0, Math.PI * 2); ctx.fill();
         }
       }
+    }
+  }
+
+  // Rope fraying at edges
+  if (s > 0.25) {
+    ctx.strokeStyle = `rgba(60, 140, 70, 0.3)`;
+    ctx.lineWidth = Math.max(0.5, 1 * s);
+    for (let fi = 0; fi < 4; fi++) {
+      const angle = (fi / 4) * Math.PI * 2 + t * 0.3;
+      const fx = Math.cos(angle) * dw * 1.05;
+      const fy = Math.sin(angle) * dh * 1.05;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(fx + Math.cos(angle) * 5 * s, fy + Math.sin(angle) * 5 * s);
+      ctx.stroke();
     }
   }
 
@@ -1063,33 +1141,48 @@ function drawBarge(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void
 
   ctx.restore(); // end glow
 
-  // Piled trash shapes on top
+  // Piled trash silhouettes on top
   if (s > 0.15) {
     ctx.save();
     const pileY = hullY;
 
-    // Random pile of geometric shapes
-    ctx.fillStyle = "rgba(90, 70, 50, 0.7)";
-    ctx.fillRect(-hullW * 0.3, pileY - bh * 0.15, hullW * 0.2, bh * 0.15);
-    ctx.fillStyle = "rgba(60, 80, 60, 0.7)";
-    ctx.fillRect(-hullW * 0.05, pileY - bh * 0.2, hullW * 0.15, bh * 0.2);
-    ctx.fillStyle = "rgba(80, 60, 40, 0.7)";
-    ctx.fillRect(hullW * 0.15, pileY - bh * 0.12, hullW * 0.18, bh * 0.12);
-
-    // Some circles (barrel shapes in the pile)
-    ctx.fillStyle = "rgba(100, 70, 30, 0.6)";
-    ctx.beginPath(); ctx.arc(-hullW * 0.15, pileY - bh * 0.08, bw * 0.06, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "rgba(50, 90, 50, 0.6)";
-    ctx.beginPath(); ctx.arc(hullW * 0.08, pileY - bh * 0.18, bw * 0.05, 0, Math.PI * 2); ctx.fill();
-
-    // Peak triangle
-    ctx.fillStyle = "rgba(70, 70, 70, 0.5)";
+    // Background pile mass
+    ctx.fillStyle = "rgba(70, 60, 45, 0.7)";
     ctx.beginPath();
-    ctx.moveTo(-bw * 0.05, pileY - bh * 0.3);
-    ctx.lineTo(bw * 0.08, pileY - bh * 0.15);
-    ctx.lineTo(-bw * 0.12, pileY - bh * 0.12);
+    ctx.moveTo(-hullW * 0.4, pileY);
+    ctx.bezierCurveTo(-hullW * 0.35, pileY - bh * 0.15, -hullW * 0.1, pileY - bh * 0.25, 0, pileY - bh * 0.28);
+    ctx.bezierCurveTo(hullW * 0.15, pileY - bh * 0.22, hullW * 0.35, pileY - bh * 0.12, hullW * 0.4, pileY);
     ctx.closePath();
     ctx.fill();
+
+    // Individual trash silhouettes on the pile
+    // Mini barrel
+    ctx.fillStyle = "rgba(100, 70, 30, 0.65)";
+    ctx.fillRect(-hullW * 0.25, pileY - bh * 0.18, hullW * 0.1, bh * 0.12);
+    // Mini bottle
+    ctx.fillStyle = "rgba(60, 130, 180, 0.5)";
+    ctx.fillRect(hullW * 0.05, pileY - bh * 0.2, hullW * 0.04, bh * 0.14);
+    ctx.fillRect(hullW * 0.055, pileY - bh * 0.23, hullW * 0.03, bh * 0.04);
+    // Mini bag blob
+    ctx.fillStyle = "rgba(200, 210, 220, 0.4)";
+    ctx.beginPath();
+    ctx.arc(hullW * 0.2, pileY - bh * 0.12, bw * 0.04, 0, Math.PI * 2);
+    ctx.fill();
+    // Crate shape
+    ctx.fillStyle = "rgba(90, 75, 50, 0.6)";
+    ctx.fillRect(-hullW * 0.08, pileY - bh * 0.15, hullW * 0.12, bh * 0.1);
+    // Net draped over
+    if (s > 0.3) {
+      ctx.strokeStyle = "rgba(40, 120, 50, 0.3)";
+      ctx.lineWidth = Math.max(0.5, 1 * s);
+      for (let ni = 0; ni < 5; ni++) {
+        const nx = -hullW * 0.3 + ni * hullW * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(nx, pileY - bh * 0.1);
+        ctx.quadraticCurveTo(nx + hullW * 0.05, pileY - bh * 0.22, nx + hullW * 0.1, pileY - bh * 0.08);
+        ctx.stroke();
+      }
+    }
 
     ctx.restore();
   }
@@ -1353,6 +1446,47 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.fillStyle = "#44ddff"; ctx.shadowColor = "#44ddff"; ctx.shadowBlur = 10;
     ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
   }
+
+  // Tiny floating debris (organic particles, detritus)
+  for (let i = 0; i < 15; i++) {
+    const dx = seededRandom(i + 1200) * w;
+    const dy = seededRandom(i + 1300) * h * 0.7 + h * 0.15;
+    const drift = Math.sin(t * 0.2 + i * 1.7) * 15;
+    const sink = Math.sin(t * 0.15 + i * 2.3) * 8;
+    const size = 0.8 + seededRandom(i + 1400) * 1.5;
+    ctx.globalAlpha = 0.06 + 0.04 * Math.abs(Math.sin(t * 0.5 + i));
+    ctx.fillStyle = "rgba(120, 160, 140, 0.5)";
+    ctx.fillRect(dx + drift - size / 2, dy + sink - size / 2, size, size * (0.5 + seededRandom(i + 1500) * 0.5));
+  }
+
+  // Small fish silhouettes swimming across background
+  for (let i = 0; i < 3; i++) {
+    const fishSpeed = 0.02 + seededRandom(i + 1600) * 0.03;
+    const fishX = ((t * fishSpeed * w + seededRandom(i + 1700) * w) % (w * 1.3)) - w * 0.15;
+    const fishY = h * (0.2 + seededRandom(i + 1800) * 0.4) + Math.sin(t * 0.8 + i * 3) * 20;
+    const fishSize = 4 + seededRandom(i + 1900) * 4;
+    const dir = seededRandom(i + 1650) > 0.5 ? 1 : -1;
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = "rgba(80, 140, 180, 0.6)";
+    ctx.save();
+    ctx.translate(fishX, fishY);
+    ctx.scale(dir, 1);
+    // Fish body
+    ctx.beginPath();
+    ctx.moveTo(fishSize, 0);
+    ctx.quadraticCurveTo(fishSize * 0.3, -fishSize * 0.4, -fishSize * 0.5, 0);
+    ctx.quadraticCurveTo(fishSize * 0.3, fishSize * 0.4, fishSize, 0);
+    ctx.fill();
+    // Tail
+    ctx.beginPath();
+    ctx.moveTo(-fishSize * 0.5, 0);
+    ctx.lineTo(-fishSize, -fishSize * 0.35);
+    ctx.lineTo(-fishSize, fishSize * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   ctx.restore();
 }
 
@@ -1521,6 +1655,8 @@ function drawPistol(
 function drawScoreDisplay(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth: number): void {
   const x = canvasWidth - 24;
   const y = 52;
+  // Score is now rendered in the HTML HUD at the bottom — skip canvas rendering
+  return;
   const now = Date.now();
   const timeSinceChange = now - state.lastScoreChangeTime;
   const flashIntensity = Math.max(0, 1 - timeSinceChange / 500);
@@ -1561,6 +1697,8 @@ function drawWaveDisplay(ctx: CanvasRenderingContext2D, state: GameState, canvas
   const x = canvasWidth - 24;
   const y = 78;
   const now = Date.now();
+  // Wave display is now rendered in the HTML HUD — skip canvas rendering
+  return;
 
   const transitionActive = now < state.waveTransitionUntil;
   const transitionProgress = transitionActive ? 1 - (state.waveTransitionUntil - now) / 2000 : 1;
@@ -1602,6 +1740,8 @@ function drawWaveDisplay(ctx: CanvasRenderingContext2D, state: GameState, canvas
    ═══════════════════════════════════════════════════════════════ */
 
 function drawNewHighScoreIndicator(ctx: CanvasRenderingContext2D, canvasWidth: number): void {
+  // Now rendered in HTML HUD
+  return;
   const now = Date.now();
   const pulse = 0.7 + 0.3 * Math.sin(now / 150);
   const x = canvasWidth - 24;

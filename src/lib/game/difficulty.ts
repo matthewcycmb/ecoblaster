@@ -2,10 +2,10 @@ import { Difficulty, DifficultyConfig, TrashType } from "@/lib/types";
 
 export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   easy: {
-    initialTrash: 2,
-    depthSpeedPerSec: 0.06,
+    initialTrash: 4,
+    depthSpeedPerSec: 0.07,
     extraPerWave: 1,
-    spawnIntervalSec: 7,
+    spawnIntervalSec: 3,
     trashTypeWeights: { bottle: 70, bag: 15, barrel: 10, net: 5, barge: 0 },
   },
   normal: {

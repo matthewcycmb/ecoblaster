@@ -26,7 +26,7 @@ export function createGameEngine(
   canvas: HTMLCanvasElement,
   getState: () => GameState,
   onStateChange: (phase: GameState["phase"]) => void,
-  config: DifficultyConfig,
+  getConfig: () => DifficultyConfig,
   getVideoElement?: () => HTMLVideoElement | null,
   getAimPosition?: () => { x: number; y: number } | null
 ): GameEngine {
@@ -38,6 +38,7 @@ export function createGameEngine(
   function tick(now: number) {
     if (!running) return;
     const state = getState();
+    const config = getConfig();
 
     if (lastTime === 0) lastTime = now;
     const deltaMs = Math.min(now - lastTime, 100);

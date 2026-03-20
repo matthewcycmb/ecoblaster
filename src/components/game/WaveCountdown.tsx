@@ -10,7 +10,7 @@ export default function WaveCountdown({
       {isSurgeWave ? (
         <>
           <p
-            className="text-6xl sm:text-7xl font-black text-red-500 animate-pulse tracking-wider uppercase"
+            className="text-6xl sm:text-7xl font-black text-red-500 tracking-wider uppercase"
             style={{ textShadow: "0 0 30px rgba(255,80,80,0.6), 0 0 60px rgba(255,80,80,0.3)" }}
           >
             Trash Surge

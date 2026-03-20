@@ -151,7 +151,7 @@ export function updateTrashScreenPos(
   z.screenScale = MIN_SCALE + (MAX_SCALE - MIN_SCALE) * t;
   z.y = horizonY + (groundY - horizonY) * t;
   // Lanes converge at horizon, spread near player
-  const spread = canvasWidth * 0.42 * (0.1 + t * 0.9);
+  const spread = canvasWidth * 0.42 * (0.3 + t * 0.7);
   z.x = canvasWidth / 2 + z.laneX * spread;
 }
 

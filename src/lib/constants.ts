@@ -21,7 +21,7 @@ export const ZOMBIE_REACH_DEPTH = 0.98; // depth at which zombie damages player
 
 // Hit detection
 export const TRASH_HIT_RADIUS = 50;    // base hit radius (scaled with perspective)
-export const EASY_HIT_MARGIN = 1.5;    // easy mode multiplies AABB margin by this
+export const EASY_HIT_MARGIN = 1.2;    // easy mode multiplies AABB margin by this
 export const EASY_SPEED_MULT = 0.6;    // easy mode multiplies depthSpeedPerSec by this
 
 // Gameplay
@@ -30,7 +30,7 @@ export const INITIAL_HEALTH = 100;
 export const FLICK_THRESHOLD = -0.02;
 export const DEFAULT_COOLDOWN_MS = 400;
 export const MUZZLE_FLASH_DURATION_MS = 100;
-export const WAVE_COUNTDOWN_MS = 1500;
+export const WAVE_COUNTDOWN_MS = 800;
 export const HIT_TOAST_DURATION_MS = 800;
 export const HAND_NOT_DETECTED_TIMEOUT_MS = 3000;
 export const POSE_NOT_DETECTED_TIMEOUT_MS = 5000;

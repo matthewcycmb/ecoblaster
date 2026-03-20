@@ -3,16 +3,20 @@
 export default function GameHUD({
   health,
   score,
+  wave,
+  isSurgeWave,
   onPause,
 }: {
   health: number;
   score: number;
+  wave: number;
+  isSurgeWave: boolean;
   onPause: () => void;
 }) {
   return (
     <>
-      {/* Health - top left */}
-      <div className="absolute top-4 left-4 flex items-center gap-3">
+      {/* Health - bottom left */}
+      <div className="absolute bottom-4 left-6 flex items-center gap-3">
         <div className="bg-black/40 rounded-lg px-4 py-2 flex items-center gap-2">
           <span className="text-white font-semibold text-sm">Reef Health:</span>
           <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
@@ -28,8 +32,13 @@ export default function GameHUD({
         </div>
       </div>
 
-      {/* Score - top center */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2">
+      {/* Score & Wave - bottom right */}
+      <div className="absolute bottom-4 right-16 flex items-center gap-3">
+        <div className="bg-black/40 rounded-lg px-4 py-2">
+          <span className={`font-mono font-bold text-sm ${isSurgeWave ? "text-red-400" : "text-white/70"}`}>
+            {isSurgeWave ? `SURGE WAVE ${wave}` : `WAVE ${wave}`}
+          </span>
+        </div>
         <div className="bg-black/40 rounded-lg px-5 py-2">
           <span className="text-cyan-400 font-mono font-bold text-lg">{score.toLocaleString()}</span>
         </div>
