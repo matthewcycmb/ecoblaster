@@ -56,9 +56,10 @@ export function spawnTrash(
   wave?: number
 ): TrashItem {
   const trashType = overrideType ?? pickTrashType(config);
+  const LANES = [-0.8, -0.5, -0.2, 0.1, 0.4, 0.7];
   const laneX = trashType === "barge"
     ? (Math.random() * 0.4 - 0.2)
-    : (Math.random() * 1.6 - 0.8);
+    : LANES[Math.floor(Math.random() * LANES.length)] + (Math.random() * 0.2 - 0.1);
   const depth = Math.random() * 0.05;
   const speedVariation = 0.85 + Math.random() * 0.30;
 
