@@ -17,10 +17,12 @@ export const HORIZON_Y_RATIO = 0.28;   // horizon line at 28% from top
 export const GROUND_Y_RATIO = 0.95;    // ground/player at 95% from top
 export const MIN_SCALE = 0.15;         // zombie scale at depth 0 (far away)
 export const MAX_SCALE = 1.8;          // zombie scale at depth 1 (right in your face)
-export const ZOMBIE_REACH_DEPTH = 0.95; // depth at which zombie damages player
+export const ZOMBIE_REACH_DEPTH = 0.98; // depth at which zombie damages player
 
 // Hit detection
-export const ZOMBIE_HIT_RADIUS = 50;   // base hit radius (scaled with perspective)
+export const TRASH_HIT_RADIUS = 50;    // base hit radius (scaled with perspective)
+export const EASY_HIT_MARGIN = 1.5;    // easy mode multiplies AABB margin by this
+export const EASY_SPEED_MULT = 0.6;    // easy mode multiplies depthSpeedPerSec by this
 
 // Gameplay
 export const DAMAGE_PER_HIT = 20;
@@ -28,7 +30,7 @@ export const INITIAL_HEALTH = 100;
 export const FLICK_THRESHOLD = -0.02;
 export const DEFAULT_COOLDOWN_MS = 200;
 export const MUZZLE_FLASH_DURATION_MS = 100;
-export const WAVE_COUNTDOWN_MS = 3000;
+export const WAVE_COUNTDOWN_MS = 1500;
 export const HIT_TOAST_DURATION_MS = 800;
 export const HAND_NOT_DETECTED_TIMEOUT_MS = 3000;
 export const POSE_NOT_DETECTED_TIMEOUT_MS = 5000;
@@ -84,3 +86,11 @@ export const PISTOL_GRIP_HEIGHT = 50;
 export const PISTOL_RECOIL_DURATION_MS = 150;
 export const PISTOL_RECOIL_ANGLE = 0.15;
 export const PISTOL_RECOIL_OFFSET = 8;
+
+// Auto-fire (easy mode)
+export const EASY_AUTO_FIRE_INTERVAL_MS = 350;
+
+// Hit effects
+export const HIT_FLASH_DURATION_MS = 80;
+export const SCREEN_SHAKE_DURATION_MS = 120;
+export const SCREEN_SHAKE_INTENSITY = 4;

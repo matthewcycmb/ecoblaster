@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Zombie Flick",
-  description: "A browser-based first-person zombie shooter using hand tracking",
+  title: "Reef Defender",
+  description: "Protect the reef with your hands — a browser-based ocean conservation game using hand tracking",
 };
 
 export default function RootLayout({

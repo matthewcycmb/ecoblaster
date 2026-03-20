@@ -1,9 +1,9 @@
 import { GameState, DifficultyConfig } from "@/lib/types";
 import {
-  moveZombies,
-  checkZombieReachedPlayer,
-  spawnZombie,
-  getZombieCountForWave,
+  moveTrash,
+  checkTrashReachedPlayer,
+  spawnTrash,
+  getTrashCountForWave,
 } from "./zombies";
 import { checkPowerUpCollection } from "./powerups";
 import { renderFrame } from "./renderer";
@@ -111,31 +111,31 @@ function updatePlaying(
     checkPowerUpCollection(state, aim.x, aim.y);
   }
 
-  // --- Spawn zombies over time ---
-  const totalForWave = getZombieCountForWave(state.wave, config, state.isBossWave);
+  // --- Spawn trash over time ---
+  const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
   if (
-    state.zombiesSpawned < totalForWave &&
+    state.trashSpawned < totalForWave &&
     now - state.lastSpawnTime >= config.spawnIntervalSec * 1000
   ) {
-    const z = spawnZombie(canvasWidth, canvasHeight, config, undefined, state.wave);
-    state.zombies.push(z);
-    state.zombiesSpawned++;
+    const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
+    state.trashItems.push(z);
+    state.trashSpawned++;
     state.lastSpawnTime = now;
   }
 
-  // --- Move zombies (with slow-mo check) ---
+  // --- Move trash (with slow-mo check) ---
   const slowMoActive = state.activePowerUp?.type === "slow-mo";
-  moveZombies(state.zombies, canvasWidth, canvasHeight, deltaMs, slowMoActive);
+  moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs, slowMoActive);
 
-  // --- Check zombie reached player ---
-  for (const z of state.zombies) {
+  // --- Check trash reached player ---
+  for (const z of state.trashItems) {
     if (!z.alive) continue;
-    if (checkZombieReachedPlayer(z)) {
+    if (checkTrashReachedPlayer(z)) {
       z.alive = false;
-      // Boss deals 3x damage
-      const damage = z.zombieType === "boss" ? DAMAGE_PER_HIT * 3 : DAMAGE_PER_HIT;
+      // Barge deals 3x damage
+      const damage = z.trashType === "barge" ? DAMAGE_PER_HIT * 3 : DAMAGE_PER_HIT;
       state.health = Math.max(0, state.health - damage);
-      state.zombiesRemainingInWave--;
+      state.trashRemainingInWave--;
 
       // Reset combo on being hit
       state.combo.count = 0;
@@ -146,7 +146,7 @@ function updatePlaying(
         x: canvasWidth / 2,
         y: canvasHeight * 0.5,
         createdAt: now,
-        text: z.zombieType === "boss" ? "BOSS HIT! -60 HP" : "You were hit! -20 HP",
+        text: z.trashType === "barge" ? "Barge impact! -60 Health" : "Trash hit the reef! -20 Health",
         color: "#FF5A5F",
       });
 
@@ -158,8 +158,8 @@ function updatePlaying(
     }
   }
 
-  // --- Remove dead zombies (keep collected power-ups from this frame) ---
-  state.zombies = state.zombies.filter((z) => z.alive);
+  // --- Remove dead trash (keep collected power-ups from this frame) ---
+  state.trashItems = state.trashItems.filter((z) => z.alive);
 
   // --- Animate displayed score toward actual score ---
   if (state.displayedScore < state.score) {
@@ -178,13 +178,13 @@ function updatePlaying(
   }
 
   // --- Check wave cleared ---
-  const allSpawned = state.zombiesSpawned >= totalForWave;
-  const allDead = state.zombies.filter((z) => z.alive).length === 0;
+  const allSpawned = state.trashSpawned >= totalForWave;
+  const allDead = state.trashItems.filter((z) => z.alive).length === 0;
 
-  // On boss waves, also require the boss to be defeated
-  const bossCondition = state.isBossWave ? state.bossDefeated : true;
+  // On surge waves, also require the surge to be cleared
+  const surgeCondition = state.isSurgeWave ? state.surgeCleared : true;
 
-  if (allSpawned && allDead && bossCondition) {
+  if (allSpawned && allDead && surgeCondition) {
     state.wave++;
     state.phase = "wave-countdown";
     state.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
@@ -199,28 +199,28 @@ export function startWave(
   canvasHeight: number,
   config: DifficultyConfig
 ): void {
-  // Detect boss wave
-  state.isBossWave = state.wave % BOSS_WAVE_INTERVAL === 0;
-  state.bossDefeated = false;
+  // Detect surge wave
+  state.isSurgeWave = state.wave % BOSS_WAVE_INTERVAL === 0;
+  state.surgeCleared = false;
 
-  const totalForWave = getZombieCountForWave(state.wave, config, state.isBossWave);
-  state.zombiesRemainingInWave = totalForWave + (state.isBossWave ? 1 : 0); // +1 for the boss itself
-  state.zombiesSpawned = 0;
+  const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
+  state.trashRemainingInWave = totalForWave + (state.isSurgeWave ? 1 : 0); // +1 for the barge itself
+  state.trashSpawned = 0;
   state.lastSpawnTime = 0;
 
-  // Spawn boss immediately on boss waves
-  if (state.isBossWave) {
-    const boss = spawnZombie(canvasWidth, canvasHeight, config, "boss", state.wave);
-    state.zombies.push(boss);
+  // Spawn barge immediately on surge waves
+  if (state.isSurgeWave) {
+    const barge = spawnTrash(canvasWidth, canvasHeight, config, "barge", state.wave);
+    state.trashItems.push(barge);
     playBossRoar();
   }
 
   // Spawn first batch immediately (up to 3)
-  const immediate = Math.min(3, totalForWave);
+  const immediate = Math.min(state.wave === 1 ? 1 : 3, totalForWave);
   for (let i = 0; i < immediate; i++) {
-    const z = spawnZombie(canvasWidth, canvasHeight, config, undefined, state.wave);
-    state.zombies.push(z);
-    state.zombiesSpawned++;
+    const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
+    state.trashItems.push(z);
+    state.trashSpawned++;
   }
   state.lastSpawnTime = Date.now();
 }

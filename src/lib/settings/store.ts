@@ -6,7 +6,7 @@ const SETTINGS_KEY = "zombie-flick-settings";
 export const DEFAULT_SETTINGS: Settings = {
   sensitivity: FLICK_THRESHOLD,
   flickCooldownMs: DEFAULT_COOLDOWN_MS,
-  difficulty: "normal",
+  difficulty: "easy",
   muted: false,
   playerName: "",
 };

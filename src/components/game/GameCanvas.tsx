@@ -2,16 +2,18 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { GameState, GamePhase, Settings } from "@/lib/types";
+import { GameState, GamePhase, Settings, Difficulty } from "@/lib/types";
 import { createInitialState, saveHighScore } from "@/lib/game/state";
 import { createGameEngine, startWave, GameEngine } from "@/lib/game/engine";
 import { DIFFICULTY_CONFIGS } from "@/lib/game/difficulty";
 import {
   raycastFromPoint,
-  findClosestZombieAtPoint,
-  findZombiesInRadius,
+  findClosestTrashAtPoint,
+  findTrashInRadius,
+  setHitMarginMultiplier,
 } from "@/lib/game/hitDetection";
-import { handleExploderDeath } from "@/lib/game/zombies";
+import { EASY_HIT_MARGIN } from "@/lib/constants";
+import { handleNetDeath } from "@/lib/game/zombies";
 import { incrementCombo } from "@/lib/game/combo";
 import { maybeDropPowerUp } from "@/lib/game/powerups";
 import { loadSettings, saveSettings } from "@/lib/settings/store";
@@ -27,6 +29,9 @@ import {
   BOSS_BONUS_MULTIPLIER,
   EXPLODER_DAMAGE_RADIUS,
   PISTOL_RECOIL_DURATION_MS,
+  EASY_AUTO_FIRE_INTERVAL_MS,
+  HIT_FLASH_DURATION_MS,
+  SCREEN_SHAKE_DURATION_MS,
 } from "@/lib/constants";
 import {
   playGunshot,
@@ -45,6 +50,7 @@ import GameHUD from "./GameHUD";
 import PauseModal from "./PauseModal";
 import GameOverModal from "./GameOverModal";
 import WaveCountdown from "./WaveCountdown";
+import TutorialOverlay from "./TutorialOverlay";
 import type { TrackerStatus, HandTrackerHandle } from "@/components/mediapipe/HandTracker";
 
 const HandTracker = dynamic(
@@ -64,22 +70,27 @@ export default function GameCanvas() {
   const aimPositionRef = useRef<{ x: number; y: number } | null>(null);
   const aimTargetRef = useRef<{ x: number; y: number } | null>(null);
   const pendingStartRef = useRef(false);
+  const handleFireRef = useRef<(dirX?: number, dirY?: number) => void>(() => {});
 
   const [phase, setPhase] = useState<GamePhase>("idle");
   const [health, setHealth] = useState(100);
   const [score, setScore] = useState(0);
   const [wave, setWave] = useState(1);
-  const [isBossWave, setIsBossWave] = useState(false);
+  const [isSurgeWave, setIsSurgeWave] = useState(false);
   const [playerName, setPlayerName] = useState("");
   const [nameError, setNameError] = useState("");
   const [trackerStatus, setTrackerStatus] = useState<TrackerStatus>("loading");
   const [handWarning, setHandWarning] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [difficulty, setDifficultyState] = useState<Difficulty>("easy");
+  const [showTutorial, setShowTutorial] = useState(false);
+  const hasShownTutorialRef = useRef(false);
 
-  // Load player name on mount
+  // Load player name and difficulty on mount
   useEffect(() => {
     const settings = loadSettings();
     setPlayerName(settings.playerName);
+    setDifficultyState(settings.difficulty);
   }, []);
 
   // Sync React state from game state periodically
@@ -88,12 +99,12 @@ export default function GameCanvas() {
     setHealth(s.health);
     setScore(s.score);
     setWave(s.wave);
-    setIsBossWave(s.isBossWave);
+    setIsSurgeWave(s.isSurgeWave);
 
     if (s.phase === "playing" && cameraActive) {
       const now = Date.now();
       if (now - lastHandSeenRef.current > POSE_NOT_DETECTED_TIMEOUT_MS) {
-        setHandWarning("Make a finger-gun pose (index extended, other fingers folded).");
+        setHandWarning("Point your index finger to aim (other fingers folded).");
       } else if (now - lastHandSeenRef.current > HAND_NOT_DETECTED_TIMEOUT_MS) {
         setHandWarning("Hand not detected. Place your hand in view.");
       } else {
@@ -101,6 +112,30 @@ export default function GameCanvas() {
       }
     } else {
       setHandWarning(null);
+    }
+
+    // Auto-fire on easy mode: if finger-gun pose is active, fire automatically
+    if (
+      s.phase === "playing" &&
+      settingsRef.current.difficulty === "easy" &&
+      aimPositionRef.current &&
+      gestureDetectorRef.current
+    ) {
+      const now = Date.now();
+      if (now - s.lastFireTime >= EASY_AUTO_FIRE_INTERVAL_MS) {
+        const aim = aimPositionRef.current;
+        const canvas = canvasRef.current;
+        if (canvas && aim) {
+          const cx = canvas.width / 2;
+          const cy = canvas.height / 2;
+          const dx = aim.x - cx;
+          const dy = aim.y - cy;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            handleFireRef.current(dx / len, dy / len);
+          }
+        }
+      }
     }
   }, [cameraActive]);
 
@@ -163,12 +198,15 @@ export default function GameCanvas() {
   }, []);
 
   /**
-   * Process a kill: score, combo, power-up drop, exploder chain.
+   * Process a kill: score, combo, power-up drop, net chain.
    */
-  const processKill = useCallback((state: GameState, z: typeof state.zombies[0], now: number): number => {
+  const processKill = useCallback((state: GameState, z: typeof state.trashItems[0], now: number): number => {
     let totalKills = 1;
     z.alive = false;
-    state.zombiesRemainingInWave--;
+    state.trashRemainingInWave--;
+
+    state.hitFlashUntil = now + HIT_FLASH_DURATION_MS;
+    state.screenShakeUntil = now + SCREEN_SHAKE_DURATION_MS;
 
     const { newMultiplier, milestoneReached } = incrementCombo(state.combo);
     if (milestoneReached) {
@@ -179,9 +217,9 @@ export default function GameCanvas() {
     state.score += killScore;
     state.lastScoreChangeTime = now;
 
-    if (z.zombieType === "boss") {
+    if (z.trashType === "barge") {
       state.score += BOSS_BONUS_MULTIPLIER * state.wave;
-      state.bossDefeated = true;
+      state.surgeCleared = true;
     }
 
     maybeDropPowerUp(state, z.x, z.y, z.id);
@@ -198,9 +236,9 @@ export default function GameCanvas() {
       color: state.combo.multiplier >= 5 ? "#FFD166" : "#0B63FF",
     });
 
-    if (z.zombieType === "exploder") {
+    if (z.trashType === "net") {
       playExplosion();
-      const chainKilled = handleExploderDeath(z, state.zombies, EXPLODER_DAMAGE_RADIUS);
+      const chainKilled = handleNetDeath(z, state.trashItems, EXPLODER_DAMAGE_RADIUS);
       for (const ck of chainKilled) {
         totalKills += processKill(state, ck, now);
       }
@@ -248,7 +286,7 @@ export default function GameCanvas() {
 
     // Shotgun blast
     if (state.activePowerUp?.type === "shotgun-blast") {
-      const hits = findZombiesInRadius(state.zombies, targetX, targetY, SHOTGUN_BLAST_RADIUS);
+      const hits = findTrashInRadius(state.trashItems, targetX, targetY, SHOTGUN_BLAST_RADIUS);
       for (const z of hits) {
         z.hp--;
         if (z.hp <= 0) {
@@ -260,7 +298,7 @@ export default function GameCanvas() {
     }
 
     // Normal fire
-    let hit = findClosestZombieAtPoint(state.zombies, targetX, targetY);
+    let hit = findClosestTrashAtPoint(state.trashItems, targetX, targetY);
     if (!hit) {
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
@@ -268,7 +306,7 @@ export default function GameCanvas() {
       const dy = targetY - cy;
       const len = Math.sqrt(dx * dx + dy * dy);
       if (len > 0) {
-        hit = raycastFromPoint(state.zombies, cx, cy, dx / len, dy / len);
+        hit = raycastFromPoint(state.trashItems, cx, cy, dx / len, dy / len);
       }
     }
     if (hit) {
@@ -279,6 +317,8 @@ export default function GameCanvas() {
       playHit();
     }
   }, [processKill]);
+
+  handleFireRef.current = handleFire;
 
   const IS_MOBILE = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const AIM_LERP_SPEED = IS_MOBILE ? 0.55 : 0.35;
@@ -371,15 +411,16 @@ export default function GameCanvas() {
   // Begin countdown (called once tracker is confirmed running)
   const beginCountdown = useCallback(() => {
     const settings = settingsRef.current;
+    setHitMarginMultiplier(settings.difficulty === "easy" ? EASY_HIT_MARGIN : 1.0);
     const state = createInitialState();
     state.phase = "wave-countdown";
-    state.waveCountdownUntil = Date.now() + 3000;
+    state.waveCountdownUntil = Date.now() + 1500;
     stateRef.current = state;
     setPhase("wave-countdown");
     setHealth(state.health);
     setScore(0);
     setWave(1);
-    setIsBossWave(false);
+    setIsSurgeWave(false);
     lastHandSeenRef.current = Date.now();
     lastPoseSeenRef.current = Date.now();
     gestureDetectorRef.current.reset();
@@ -394,8 +435,20 @@ export default function GameCanvas() {
         startWave(stateRef.current, canvas.width, canvas.height, config);
         setPhase("playing");
         playZombieGroan();
+        if (!hasShownTutorialRef.current) {
+          hasShownTutorialRef.current = true;
+          setShowTutorial(true);
+        }
       }
-    }, 3000);
+    }, 1500);
+  }, []);
+
+  const handleSetDifficulty = useCallback((d: Difficulty) => {
+    setDifficultyState(d);
+    const settings = loadSettings();
+    settings.difficulty = d;
+    saveSettings(settings);
+    settingsRef.current = settings;
   }, []);
 
   // Start game — validates name, activates camera, waits for tracker
@@ -480,6 +533,7 @@ export default function GameCanvas() {
       {(phase === "playing" || phase === "wave-countdown") && (
         <GameHUD
           health={health}
+          score={score}
           onPause={() => {
             stateRef.current.phase = "paused";
             setPhase("paused");
@@ -499,7 +553,7 @@ export default function GameCanvas() {
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50">
           <h2 className="text-2xl font-bold text-white mb-2">Request Camera Permission</h2>
           <p className="text-muted-foreground text-center max-w-sm">
-            Zombie Flick needs access to your webcam to detect your finger gesture.
+            Reef Defender needs your webcam to detect your hand gesture.
           </p>
         </div>
       )}
@@ -538,10 +592,10 @@ export default function GameCanvas() {
       {phase === "idle" && !cameraActive && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-40">
           <h2 className="game-title text-4xl sm:text-5xl font-black text-game-danger mb-2 tracking-widest">
-            Zombie Flick
+            Reef Defender
           </h2>
           <p className="game-subtitle text-gray-400 mb-6 text-center max-w-sm tracking-wide">
-            Aim with your hand. Flick to kill.
+            Protect the reef with your hands.
           </p>
 
           <div className="w-40 h-px bg-gradient-to-r from-transparent via-game-danger/40 to-transparent mb-6" />
@@ -567,13 +621,41 @@ export default function GameCanvas() {
             Start Game
           </button>
 
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={() => handleSetDifficulty("easy")}
+              className={`rounded-lg border px-5 py-2 text-sm font-bold tracking-wider uppercase transition-colors ${
+                difficulty === "easy"
+                  ? "bg-emerald-500/90 border-emerald-400/60 text-white"
+                  : "bg-white/5 border-white/15 text-gray-400 hover:bg-white/10"
+              }`}
+            >
+              Easy
+            </button>
+            <button
+              onClick={() => handleSetDifficulty("normal")}
+              className={`rounded-lg border px-5 py-2 text-sm font-bold tracking-wider uppercase transition-colors ${
+                difficulty === "normal"
+                  ? "bg-amber-500/90 border-amber-400/60 text-white"
+                  : "bg-white/5 border-white/15 text-gray-400 hover:bg-white/10"
+              }`}
+            >
+              Normal
+            </button>
+          </div>
+
           <p className="text-xs text-gray-600 mt-6 tracking-wide">Press P to pause during gameplay</p>
         </div>
       )}
 
       {/* Wave countdown */}
       {phase === "wave-countdown" && (
-        <WaveCountdown wave={wave} isBossWave={isBossWave} />
+        <WaveCountdown wave={wave} isSurgeWave={isSurgeWave} />
+      )}
+
+      {/* Tutorial overlay — wave 1 only */}
+      {showTutorial && phase === "playing" && (
+        <TutorialOverlay />
       )}
 
       {/* Pause modal */}

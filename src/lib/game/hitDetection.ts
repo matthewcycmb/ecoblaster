@@ -1,6 +1,6 @@
-import { Zombie, ZombieType } from "@/lib/types";
+import { TrashItem, TrashType } from "@/lib/types";
 
-interface ZombieAABB {
+interface TrashAABB {
   left: number;
   right: number;
   top: number;
@@ -9,20 +9,18 @@ interface ZombieAABB {
   centerY: number;
 }
 
+// Global hit margin multiplier — set via setHitMarginMultiplier (e.g. 1.5 for easy mode)
+let hitMarginMult = 1.0;
+
+export function setHitMarginMultiplier(mult: number): void {
+  hitMarginMult = mult;
+}
+
 /**
- * Compute a generous AABB for a zombie that covers the full rendered body
- * including arms, claws, and head decorations.
- *
- * Renderer reference (drawZombieBody):
- *   - Head center: y = -bh*0.32, radius = bw*0.22 (boss: bw*0.25)
- *   - Boss horns extend to headR*1.5 above head center
- *   - Legs bottom: y = +bh*0.43
- *   - Arm reach: 0.48*bw (normal), 0.55*bw (boss) + claws ~8*s beyond
- *   - Body bob: up to bh*0.012 (covered by margin)
- *
- * All values include a 10% forgiving margin so near-misses still register.
+ * Compute a generous AABB for a trash item that covers the full rendered body.
+ * Includes a base 10% forgiving margin, further scaled by hitMarginMult for easy mode.
  */
-function getZombieAABB(z: Zombie): ZombieAABB {
+function getTrashAABB(z: TrashItem): TrashAABB {
   const s = z.screenScale;
   const bw = z.width * s;
   const bh = z.height * s;
@@ -31,29 +29,24 @@ function getZombieAABB(z: Zombie): ZombieAABB {
   let topOffset: number;   // distance above z.y
   const bottomOffset = bh * 0.45;  // legs + shadow
 
-  const type: ZombieType = z.zombieType;
+  const type: TrashType = z.trashType;
 
-  if (type === "boss") {
-    // Boss: wide arms + claws, horns above head
-    const headR = bw * 0.25;
+  if (type === "barge") {
     halfW = bw * 0.65;
-    topOffset = bh * 0.32 + headR * 1.6;
-  } else if (type === "tank") {
-    // Tank: bulkier shoulders + arms
-    const headR = bw * 0.22;
+    topOffset = bh * 0.32 + bw * 0.25 * 1.6;
+  } else if (type === "barrel") {
     halfW = bw * 0.55;
-    topOffset = bh * 0.32 + headR * 1.2;
+    topOffset = bh * 0.32 + bw * 0.22 * 1.2;
   } else {
-    // basic, fast, exploder — arms reach bw*0.48 + claws
-    const headR = bw * 0.22;
     halfW = bw * 0.55;
-    topOffset = bh * 0.32 + headR * 1.2;
+    topOffset = bh * 0.32 + bw * 0.22 * 1.2;
   }
 
-  // 10% forgiving margin
-  halfW *= 1.10;
-  const top = z.y - topOffset * 1.10;
-  const bottom = z.y + bottomOffset * 1.10;
+  // Base 10% forgiving margin, scaled by hitMarginMult (1.0 normal, 1.5 easy)
+  const margin = 1.10 * hitMarginMult;
+  halfW *= margin;
+  const top = z.y - topOffset * margin;
+  const bottom = z.y + bottomOffset * margin;
 
   return {
     left: z.x - halfW,
@@ -66,21 +59,21 @@ function getZombieAABB(z: Zombie): ZombieAABB {
 }
 
 /**
- * Find the closest zombie to a screen-space point (aimX, aimY).
- * Uses type-specific AABB matching the rendered zombie body.
- * Prefers the zombie closest to the aim point if multiple overlap.
+ * Find the closest trash item to a screen-space point (aimX, aimY).
+ * Uses type-specific AABB matching the rendered body.
+ * Prefers the item closest to the aim point if multiple overlap.
  */
-export function findClosestZombieAtPoint(
-  zombies: Zombie[],
+export function findClosestTrashAtPoint(
+  trashItems: TrashItem[],
   aimX: number,
   aimY: number
-): Zombie | null {
-  let closest: Zombie | null = null;
+): TrashItem | null {
+  let closest: TrashItem | null = null;
   let closestDist = Infinity;
 
-  for (const z of zombies) {
+  for (const z of trashItems) {
     if (!z.alive) continue;
-    const bb = getZombieAABB(z);
+    const bb = getTrashAABB(z);
 
     // AABB containment — point inside bounding box
     if (aimX >= bb.left && aimX <= bb.right &&
@@ -113,22 +106,22 @@ export function findClosestZombieAtPoint(
 }
 
 /**
- * Raycast from a point in a direction and find the first zombie hit.
- * Uses type-specific AABB matching the rendered zombie body.
+ * Raycast from a point in a direction and find the first trash item hit.
+ * Uses type-specific AABB matching the rendered body.
  */
 export function raycastFromPoint(
-  zombies: Zombie[],
+  trashItems: TrashItem[],
   originX: number,
   originY: number,
   dirX: number,
   dirY: number
-): Zombie | null {
-  let closest: Zombie | null = null;
+): TrashItem | null {
+  let closest: TrashItem | null = null;
   let closestT = Infinity;
 
-  for (const z of zombies) {
+  for (const z of trashItems) {
     if (!z.alive) continue;
-    const bb = getZombieAABB(z);
+    const bb = getTrashAABB(z);
 
     let tMin = 0;
     let tMax = 10000;
@@ -163,19 +156,19 @@ export function raycastFromPoint(
 }
 
 /**
- * Find ALL zombies within a screen-space radius of a point.
+ * Find ALL trash items within a screen-space radius of a point.
  * Used for shotgun blast power-up.
  */
-export function findZombiesInRadius(
-  zombies: Zombie[],
+export function findTrashInRadius(
+  trashItems: TrashItem[],
   centerX: number,
   centerY: number,
   radius: number
-): Zombie[] {
-  const result: Zombie[] = [];
-  for (const z of zombies) {
+): TrashItem[] {
+  const result: TrashItem[] = [];
+  for (const z of trashItems) {
     if (!z.alive) continue;
-    const bb = getZombieAABB(z);
+    const bb = getTrashAABB(z);
     const dx = bb.centerX - centerX;
     const dy = bb.centerY - centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);

@@ -1,4 +1,4 @@
-import { Zombie, DifficultyConfig, ZombieType } from "@/lib/types";
+import { TrashItem, DifficultyConfig, TrashType } from "@/lib/types";
 import {
   ZOMBIE_BASE_WIDTH,
   ZOMBIE_BASE_HEIGHT,
@@ -20,43 +20,43 @@ import {
   BOSS_WAVE_INTERVAL,
   BOSS_WAVE_REGULAR_ZOMBIE_FRACTION,
 } from "@/lib/constants";
-import { pickZombieType } from "./difficulty";
+import { pickTrashType } from "./difficulty";
 
 let nextId = 0;
 function genId(): string {
   return `z-${nextId++}-${Date.now()}`;
 }
 
-export function getZombieCountForWave(
+export function getTrashCountForWave(
   wave: number,
   config: DifficultyConfig,
-  isBossWave: boolean = false
+  isSurgeWave: boolean = false
 ): number {
   // Base count: initial + per-wave increase
-  const base = config.initialZombies + (wave - 1) * config.extraPerWave;
-  // Add 1 extra zombie every 5 waves for escalating difficulty
+  const base = config.initialTrash + (wave - 1) * config.extraPerWave;
+  // Add 1 extra trash every 5 waves for escalating difficulty
   const waveBonus = Math.floor(wave / 5);
   const total = base + waveBonus;
 
-  if (isBossWave) {
+  if (isSurgeWave) {
     return Math.max(2, Math.floor(total * BOSS_WAVE_REGULAR_ZOMBIE_FRACTION));
   }
   return total;
 }
 
 /**
- * Spawn a zombie at the far horizon with a random horizontal lane.
- * Supports different zombie types with unique modifiers.
+ * Spawn a trash item at the far horizon with a random horizontal lane.
+ * Supports different trash types with unique modifiers.
  */
-export function spawnZombie(
+export function spawnTrash(
   canvasWidth: number,
   canvasHeight: number,
   config: DifficultyConfig,
-  overrideType?: ZombieType,
+  overrideType?: TrashType,
   wave?: number
-): Zombie {
-  const zombieType = overrideType ?? pickZombieType(config);
-  const laneX = zombieType === "boss"
+): TrashItem {
+  const trashType = overrideType ?? pickTrashType(config);
+  const laneX = trashType === "barge"
     ? (Math.random() * 0.4 - 0.2)
     : (Math.random() * 1.6 - 0.8);
   const depth = Math.random() * 0.05;
@@ -67,35 +67,35 @@ export function spawnZombie(
   let hp = 1;
   let speed = config.depthSpeedPerSec * speedVariation;
 
-  switch (zombieType) {
-    case "fast":
+  switch (trashType) {
+    case "bag":
       speed *= FAST_SPEED_MULT;
       width *= FAST_SIZE_MULT;
       height *= FAST_SIZE_MULT;
       break;
-    case "tank":
+    case "barrel":
       speed *= TANK_SPEED_MULT;
       width *= TANK_SIZE_MULT;
       height *= TANK_SIZE_MULT;
       hp = TANK_HP;
       break;
-    case "exploder":
+    case "net":
       width *= EXPLODER_SIZE_MULT;
       height *= EXPLODER_SIZE_MULT;
       break;
-    case "boss": {
+    case "barge": {
       speed *= BOSS_SPEED_MULT;
       width *= BOSS_SIZE_MULT;
       height *= BOSS_SIZE_MULT;
-      const bossWaveNumber = Math.max(1, Math.floor((wave ?? BOSS_WAVE_INTERVAL) / BOSS_WAVE_INTERVAL));
-      hp = BOSS_BASE_HP + (bossWaveNumber - 1) * BOSS_HP_PER_WAVE;
+      const surgeWaveNumber = Math.max(1, Math.floor((wave ?? BOSS_WAVE_INTERVAL) / BOSS_WAVE_INTERVAL));
+      hp = BOSS_BASE_HP + (surgeWaveNumber - 1) * BOSS_HP_PER_WAVE;
       break;
     }
   }
 
-  const z: Zombie = {
+  const z: TrashItem = {
     id: genId(),
-    zombieType,
+    trashType,
     laneX,
     depth,
     width,
@@ -109,15 +109,15 @@ export function spawnZombie(
     screenScale: MIN_SCALE,
   };
 
-  updateZombieScreenPos(z, canvasWidth, canvasHeight);
+  updateTrashScreenPos(z, canvasWidth, canvasHeight);
   return z;
 }
 
 /**
- * Move all zombies toward the player (increase depth).
+ * Move all trash items toward the player (increase depth).
  */
-export function moveZombies(
-  zombies: Zombie[],
+export function moveTrash(
+  trashItems: TrashItem[],
   canvasWidth: number,
   canvasHeight: number,
   deltaMs: number,
@@ -125,20 +125,20 @@ export function moveZombies(
 ): void {
   const dt = deltaMs / 1000;
   const speedFactor = slowMoActive ? 0.5 : 1.0;
-  for (const z of zombies) {
+  for (const z of trashItems) {
     if (!z.alive) continue;
     z.depth += z.depthSpeedPerSec * dt * speedFactor;
-    // Slight horizontal sway for natural walking feel
+    // Slight horizontal sway for natural floating feel
     z.laneX += Math.sin(z.depth * 12 + parseFloat(z.id.split("-")[1]) * 3) * 0.0008;
-    updateZombieScreenPos(z, canvasWidth, canvasHeight);
+    updateTrashScreenPos(z, canvasWidth, canvasHeight);
   }
 }
 
 /**
  * Compute screen-space x, y, and scale from depth and laneX.
  */
-export function updateZombieScreenPos(
-  z: Zombie,
+export function updateTrashScreenPos(
+  z: TrashItem,
   canvasWidth: number,
   canvasHeight: number
 ): void {
@@ -156,23 +156,23 @@ export function updateZombieScreenPos(
 }
 
 /**
- * Check if a zombie has reached the player.
+ * Check if a trash item has reached the player.
  */
-export function checkZombieReachedPlayer(z: Zombie): boolean {
+export function checkTrashReachedPlayer(z: TrashItem): boolean {
   return z.depth >= ZOMBIE_REACH_DEPTH;
 }
 
 /**
- * Handle exploder death: damages nearby zombies in radius.
- * Returns list of zombies killed by the explosion.
+ * Handle net death: damages nearby trash items in radius.
+ * Returns list of trash items killed by the explosion.
  */
-export function handleExploderDeath(
-  exploder: Zombie,
-  allZombies: Zombie[],
+export function handleNetDeath(
+  exploder: TrashItem,
+  allTrash: TrashItem[],
   explosionRadius: number
-): Zombie[] {
-  const killed: Zombie[] = [];
-  for (const z of allZombies) {
+): TrashItem[] {
+  const killed: TrashItem[] = [];
+  for (const z of allTrash) {
     if (!z.alive || z.id === exploder.id) continue;
     const dx = z.x - exploder.x;
     const dy = z.y - exploder.y;

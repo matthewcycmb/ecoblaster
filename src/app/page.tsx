@@ -10,29 +10,29 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center gap-6 overflow-hidden">
       {/* Atmospheric fog layers */}
-      <div className="game-fog absolute inset-0 bg-gradient-to-b from-red-900/5 via-transparent to-green-900/5" />
-      <div className="game-fog absolute inset-0 bg-gradient-to-r from-transparent via-purple-900/5 to-transparent" style={{ animationDelay: "4s" }} />
+      <div className="game-fog absolute inset-0 bg-gradient-to-b from-cyan-900/10 via-transparent to-teal-900/8" />
+      <div className="game-fog absolute inset-0 bg-gradient-to-r from-transparent via-blue-900/8 to-transparent" style={{ animationDelay: "4s" }} />
 
       {/* Title block */}
       <div className="relative z-10 flex flex-col items-center gap-3 mb-2">
-        <h1 className="game-title text-6xl sm:text-7xl font-black text-game-danger tracking-widest drop-shadow-lg">
-          Zombie Flick
+        <h1 className="game-title text-6xl sm:text-7xl font-black text-cyan-400 tracking-widest drop-shadow-lg">
+          Reef Defender
         </h1>
         <p className="game-subtitle text-lg sm:text-xl text-gray-400 text-center max-w-md tracking-wide">
-          Aim with your hand. Flick to kill.
+          Protect the reef with your hands.
         </p>
       </div>
 
       {/* Divider line */}
-      <div className="w-48 h-px bg-gradient-to-r from-transparent via-game-danger/40 to-transparent" />
+      <div className="w-48 h-px bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent" />
 
       {/* Menu buttons */}
       <nav className="relative z-10 flex flex-col gap-3 items-center w-64">
         <Link
           href="/game"
-          className="game-menu-btn w-full text-center rounded-lg bg-game-danger/90 border border-game-danger/50 px-8 py-4 text-lg font-bold text-white tracking-wider uppercase"
+          className="game-menu-btn w-full text-center rounded-lg bg-cyan-600/90 border border-cyan-500/50 px-8 py-4 text-lg font-bold text-white tracking-wider uppercase"
         >
-          Start Game
+          Defend the Reef
         </Link>
         <Link
           href="/leaderboard"

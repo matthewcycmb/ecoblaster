@@ -1,48 +1,36 @@
-"use client";
-
-import { useState, useEffect } from "react";
-
 export default function WaveCountdown({
   wave,
-  isBossWave,
+  isSurgeWave,
 }: {
   wave: number;
-  isBossWave: boolean;
+  isSurgeWave: boolean;
 }) {
-  const [count, setCount] = useState(3);
-
-  useEffect(() => {
-    setCount(3);
-    const interval = setInterval(() => {
-      setCount((c) => {
-        if (c <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [wave]);
-
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 z-40 pointer-events-none">
-      {isBossWave ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-40 pointer-events-none">
+      {isSurgeWave ? (
         <>
-          <p className="text-5xl font-bold text-red-500 animate-pulse">
-            BOSS WAVE {wave}
+          <p
+            className="text-6xl sm:text-7xl font-black text-red-500 animate-pulse tracking-wider uppercase"
+            style={{ textShadow: "0 0 30px rgba(255,80,80,0.6), 0 0 60px rgba(255,80,80,0.3)" }}
+          >
+            Trash Surge
           </p>
-          <p className="text-xl text-red-300 mt-2 font-semibold">
-            PREPARE FOR BATTLE
+          <p className="text-2xl text-red-300 mt-3 font-bold tracking-widest uppercase">
+            Wave {wave} — Defend the Reef!
           </p>
         </>
       ) : (
-        <p className="text-4xl font-bold text-white animate-pulse">
-          Wave {wave} incoming...
-        </p>
-      )}
-      {count > 0 && (
-        <p className="text-6xl font-bold text-game-accent mt-4">{count}</p>
+        <>
+          <p
+            className="text-5xl sm:text-6xl font-black text-cyan-400 tracking-wider"
+            style={{ textShadow: "0 0 20px rgba(0,200,255,0.5), 0 0 40px rgba(0,200,255,0.2)" }}
+          >
+            Wave {wave}
+          </p>
+          <p className="text-xl text-white/50 mt-2 font-medium tracking-wide">
+            Incoming...
+          </p>
+        </>
       )}
     </div>
   );

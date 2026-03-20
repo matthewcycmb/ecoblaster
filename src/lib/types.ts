@@ -1,15 +1,15 @@
 export type Difficulty = "easy" | "normal" | "hard";
 
-export type ZombieType = "basic" | "fast" | "tank" | "exploder" | "boss";
+export type TrashType = "bottle" | "bag" | "barrel" | "net" | "barge";
 
 export type PowerUpType = "rapid-fire" | "shotgun-blast" | "slow-mo" | "health-pack";
 
 export interface DifficultyConfig {
-  initialZombies: number;
-  depthSpeedPerSec: number;  // how fast zombies approach (depth units/sec)
+  initialTrash: number;
+  depthSpeedPerSec: number;  // how fast trash approaches (depth units/sec)
   extraPerWave: number;
   spawnIntervalSec: number;
-  zombieTypeWeights: Record<ZombieType, number>;
+  trashTypeWeights: Record<TrashType, number>;
 }
 
 export type GamePhase =
@@ -19,9 +19,9 @@ export type GamePhase =
   | "wave-countdown"
   | "game-over";
 
-export interface Zombie {
+export interface TrashItem {
   id: string;
-  zombieType: ZombieType;
+  trashType: TrashType;
   laneX: number;             // -1 to 1 horizontal world position
   depth: number;             // 0.0 (far/horizon) to 1.0 (reached player)
   width: number;             // base width before perspective scaling
@@ -70,20 +70,22 @@ export interface GameState {
   health: number;
   score: number;
   wave: number;
-  zombies: Zombie[];
+  trashItems: TrashItem[];
   hitToasts: HitToast[];
   lastFireTime: number;
   muzzleFlashUntil: number;
   waveCountdownUntil: number;
-  zombiesRemainingInWave: number;
-  zombiesSpawned: number;
+  trashRemainingInWave: number;
+  trashSpawned: number;
   lastSpawnTime: number;
   combo: ComboState;
   powerUps: PowerUp[];
   activePowerUp: ActivePowerUp | null;
-  isBossWave: boolean;
-  bossDefeated: boolean;
+  isSurgeWave: boolean;
+  surgeCleared: boolean;
   recoilUntil: number;
+  hitFlashUntil: number;
+  screenShakeUntil: number;
   displayedScore: number;
   lastScoreChangeTime: number;
   highScore: number;
