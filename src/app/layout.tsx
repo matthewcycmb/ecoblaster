@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${inter.variable} antialiased overflow-hidden overscroll-none h-dvh`}>
         {children}
       </body>
     </html>

@@ -4,6 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html, body {
+  touch-action: none;
+  -webkit-overflow-scrolling: none;
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

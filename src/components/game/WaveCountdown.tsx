@@ -10,12 +10,12 @@ export default function WaveCountdown({
       {isSurgeWave ? (
         <>
           <p
-            className="text-6xl sm:text-7xl font-black text-red-500 tracking-wider uppercase"
+            className="text-5xl sm:text-7xl font-black text-red-500 tracking-wider uppercase text-center px-4"
             style={{ textShadow: "0 0 30px rgba(255,80,80,0.6), 0 0 60px rgba(255,80,80,0.3)" }}
           >
             Trash Surge
           </p>
-          <p className="text-2xl text-red-300 mt-3 font-bold tracking-widest uppercase">
+          <p className="text-lg sm:text-2xl text-red-300 mt-3 font-bold tracking-widest uppercase text-center px-4">
             Wave {wave} — Defend the Reef!
           </p>
         </>
