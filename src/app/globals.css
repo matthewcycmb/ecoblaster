@@ -141,7 +141,7 @@
 }
 .game-menu-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 24px #0B63FFBB, inset 0 1px 0 #ffffff44;
+  box-shadow: 0 0 24px #22d3eeBB, inset 0 1px 0 #ffffff44;
 }
 
 .game-fog {

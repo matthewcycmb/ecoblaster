@@ -591,14 +591,14 @@ export default function GameCanvas() {
       {/* Idle state — name input + start (hidden while camera is loading) */}
       {phase === "idle" && !cameraActive && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-40">
-          <h2 className="game-title text-4xl sm:text-5xl font-black text-game-danger mb-2 tracking-widest">
+          <h2 className="game-title text-4xl sm:text-5xl font-black text-cyan-400 mb-2 tracking-widest">
             Reef Defender
           </h2>
           <p className="game-subtitle text-gray-400 mb-6 text-center max-w-sm tracking-wide">
             Protect the reef with your hands.
           </p>
 
-          <div className="w-40 h-px bg-gradient-to-r from-transparent via-game-danger/40 to-transparent mb-6" />
+          <div className="w-40 h-px bg-gradient-to-r from-transparent via-teal-400/40 to-transparent mb-6" />
 
           <div className="flex flex-col gap-2 mb-6 w-72">
             <label className="text-gray-300 text-sm font-medium tracking-wide uppercase">Player Name</label>
@@ -609,14 +609,14 @@ export default function GameCanvas() {
               onKeyDown={(e) => { if (e.key === "Enter") handleStartGame(); }}
               maxLength={32}
               placeholder="Enter your name"
-              className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-game-danger/60 tracking-wide"
+              className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-400/60 tracking-wide"
             />
-            {nameError && <p className="text-sm text-game-danger">{nameError}</p>}
+            {nameError && <p className="text-sm text-red-400">{nameError}</p>}
           </div>
 
           <button
             onClick={handleStartGame}
-            className="game-menu-btn rounded-lg bg-game-danger/90 border border-game-danger/50 px-10 py-3 text-lg font-bold text-white tracking-wider uppercase"
+            className="game-menu-btn rounded-lg bg-teal-500 border border-teal-400/50 px-10 py-3 text-lg font-bold text-white tracking-wider uppercase hover:bg-teal-400 transition-colors"
           >
             Start Game
           </button>
