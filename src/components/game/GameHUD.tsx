@@ -15,11 +15,12 @@ export default function GameHUD({
 }) {
   return (
     <>
-      {/* Health - bottom left */}
-      <div className="absolute bottom-4 left-6 flex items-center gap-3">
-        <div className="bg-black/40 rounded-lg px-4 py-2 flex items-center gap-2">
-          <span className="text-white font-semibold text-sm">Reef Health:</span>
-          <div className="w-32 h-3 bg-gray-700 rounded-full overflow-hidden">
+      {/* Bottom HUD bar */}
+      <div className="absolute bottom-0 left-0 right-0 pb-6 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3">
+        {/* Health */}
+        <div className="bg-black/40 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+          <span className="text-white font-semibold text-xs sm:text-sm whitespace-nowrap">Reef:</span>
+          <div className="w-16 sm:w-32 h-2 sm:h-3 bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
@@ -28,19 +29,19 @@ export default function GameHUD({
               }}
             />
           </div>
-          <span className="text-white font-mono text-sm">{health}</span>
+          <span className="text-white font-mono text-xs sm:text-sm">{health}</span>
         </div>
-      </div>
 
-      {/* Score & Wave - bottom right */}
-      <div className="absolute bottom-4 right-16 flex items-center gap-3">
-        <div className="bg-black/40 rounded-lg px-4 py-2">
-          <span className={`font-mono font-bold text-sm ${isSurgeWave ? "text-red-400" : "text-white/70"}`}>
-            {isSurgeWave ? `SURGE WAVE ${wave}` : `WAVE ${wave}`}
+        {/* Wave */}
+        <div className="bg-black/40 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 shrink-0">
+          <span className={`font-mono font-bold text-xs sm:text-sm ${isSurgeWave ? "text-red-400" : "text-white/70"}`}>
+            {isSurgeWave ? `SURGE ${wave}` : `W${wave}`}
           </span>
         </div>
-        <div className="bg-black/40 rounded-lg px-5 py-2">
-          <span className="text-cyan-400 font-mono font-bold text-lg">{score.toLocaleString()}</span>
+
+        {/* Score */}
+        <div className="bg-black/40 rounded-lg px-2 sm:px-5 py-1.5 sm:py-2 shrink-0">
+          <span className="text-cyan-400 font-mono font-bold text-sm sm:text-lg">{score.toLocaleString()}</span>
         </div>
       </div>
 

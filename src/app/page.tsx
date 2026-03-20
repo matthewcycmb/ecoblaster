@@ -15,7 +15,7 @@ export default function Home() {
 
       {/* Title block */}
       <div className="relative z-10 flex flex-col items-center gap-3 mb-2">
-        <h1 className="game-title text-6xl sm:text-7xl font-black text-cyan-400 tracking-widest drop-shadow-lg">
+        <h1 className="game-title text-5xl sm:text-7xl font-black text-cyan-400 tracking-widest drop-shadow-lg text-center px-6">
           Reef Defender
         </h1>
         <p className="game-subtitle text-lg sm:text-xl text-gray-400 text-center max-w-md tracking-wide">

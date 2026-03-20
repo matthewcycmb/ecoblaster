@@ -422,22 +422,13 @@ export default function GameCanvas() {
     [handleFire]
   );
 
-  // Begin countdown (called once tracker is confirmed running)
-  const beginCountdown = useCallback(() => {
+  // Actually start wave countdown + playing (called after tutorial if first time)
+  const startCountdownAndPlay = useCallback(() => {
     const settings = settingsRef.current;
-    setHitMarginMultiplier(settings.difficulty === "easy" ? EASY_HIT_MARGIN : 1.0);
-    const state = createInitialState();
+    const state = stateRef.current;
     state.phase = "wave-countdown";
     state.waveCountdownUntil = Date.now() + 800;
-    stateRef.current = state;
     setPhase("wave-countdown");
-    setHealth(state.health);
-    setScore(0);
-    setWave(1);
-    setIsSurgeWave(false);
-    lastHandSeenRef.current = Date.now();
-    lastPoseSeenRef.current = Date.now();
-    gestureDetectorRef.current.reset();
 
     startBackgroundMusic();
 
@@ -449,13 +440,40 @@ export default function GameCanvas() {
         startWave(stateRef.current, canvas.width, canvas.height, config);
         setPhase("playing");
         playZombieGroan();
-        if (!hasShownTutorialRef.current) {
-          hasShownTutorialRef.current = true;
-          setShowTutorial(true);
-        }
       }
     }, 800);
   }, []);
+
+  // Handle tutorial completion — start wave 1
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    startCountdownAndPlay();
+  }, [startCountdownAndPlay]);
+
+  // Begin countdown (called once tracker is confirmed running)
+  const beginCountdown = useCallback(() => {
+    const settings = settingsRef.current;
+    setHitMarginMultiplier(settings.difficulty === "easy" ? EASY_HIT_MARGIN : 1.0);
+    const state = createInitialState();
+    stateRef.current = state;
+    setHealth(state.health);
+    setScore(0);
+    setWave(1);
+    setIsSurgeWave(false);
+    lastHandSeenRef.current = Date.now();
+    lastPoseSeenRef.current = Date.now();
+    gestureDetectorRef.current.reset();
+
+    if (!hasShownTutorialRef.current) {
+      // First time: show tutorial for 3 seconds, then start wave 1
+      hasShownTutorialRef.current = true;
+      setShowTutorial(true);
+      // handleTutorialComplete will be called by TutorialOverlay's onComplete
+    } else {
+      // Subsequent games: go straight to countdown
+      startCountdownAndPlay();
+    }
+  }, [startCountdownAndPlay]);
 
   const handleSetDifficulty = useCallback((d: Difficulty) => {
     setDifficultyState(d);
@@ -695,9 +713,9 @@ export default function GameCanvas() {
         <WaveCountdown wave={wave} isSurgeWave={isSurgeWave} />
       )}
 
-      {/* Tutorial overlay — wave 1 only */}
-      {showTutorial && phase === "playing" && (
-        <TutorialOverlay />
+      {/* Tutorial overlay — once before wave 1 */}
+      {showTutorial && (
+        <TutorialOverlay onComplete={handleTutorialComplete} />
       )}
 
       {/* Difficulty upgrade prompt — after wave 5, easy mode only */}

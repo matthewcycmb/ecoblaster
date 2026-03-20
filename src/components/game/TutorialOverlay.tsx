@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-export default function TutorialOverlay() {
+export default function TutorialOverlay({ onComplete }: { onComplete?: () => void }) {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setFading(true), 4000);
-    const hideTimer = setTimeout(() => setVisible(false), 5000);
+    const fadeTimer = setTimeout(() => setFading(true), 2000);
+    const hideTimer = setTimeout(() => {
+      setVisible(false);
+      onComplete?.();
+    }, 3000);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
     };
-  }, []);
+  }, [onComplete]);
 
   if (!visible) return null;
 
