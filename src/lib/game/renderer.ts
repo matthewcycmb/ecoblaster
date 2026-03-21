@@ -81,6 +81,21 @@ function loadMonsterImage(): void {
   img.onload = () => { monsterImage = img; };
 }
 
+/* ─── Trash Sprites ─── */
+const trashSprites: Record<string, HTMLImageElement | null> = {};
+let trashSpritesLoading = false;
+
+function loadTrashSprites(): void {
+  if (trashSpritesLoading || typeof window === "undefined") return;
+  trashSpritesLoading = true;
+  const types = ["bottle", "bag", "barrel", "net", "barge"];
+  for (const type of types) {
+    const img = new window.Image();
+    img.src = `/trash/${type}.png`;
+    img.onload = () => { trashSprites[type] = img; };
+  }
+}
+
 /* ─── Main Render Entry ─── */
 
 export function renderFrame(
@@ -108,6 +123,7 @@ export function renderFrame(
   }
 
   drawBackground(ctx, canvasWidth, canvasHeight, t);
+  loadTrashSprites();
 
   // Power-ups on ground (before zombies so they appear under)
   for (const pu of state.powerUps) {
@@ -288,20 +304,14 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
    ═══════════════════════════════════════════════════════════════ */
 
 function drawTrashItem(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
-  switch (z.trashType) {
-    case "bottle": drawBottle(ctx, z, t); break;
-    case "bag": drawBag(ctx, z, t); break;
-    case "barrel": drawBarrel(ctx, z, t); break;
-    case "net": drawNet(ctx, z, t); break;
-    case "barge": drawBarge(ctx, z, t); break;
-  }
+  drawTrashSprite(ctx, z, t);
   if ((z.trashType === "barrel" || z.trashType === "barge") && z.hp < z.maxHp) {
     drawTrashHPBar(ctx, z);
   }
 }
 
-/* ─── Bottle (basic) ─── */
-function drawBottle(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
+/* ─── Trash Sprite Drawing ─── */
+function drawTrashSprite(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
   const s = z.screenScale;
   const bw = z.width * s;
   const bh = z.height * s;
@@ -309,416 +319,18 @@ function drawBottle(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): voi
   const bob = Math.sin(t * 1.5 + seed * 3) * bh * 0.02;
   const sway = Math.sin(t * 0.8 + seed * 2) * 0.06;
 
+  const sprite = trashSprites[z.trashType];
   ctx.save();
   ctx.translate(z.x, z.y + bob);
   ctx.rotate(sway);
+  ctx.imageSmoothingEnabled = false; // pixel art crisp
 
-  // Glow aura
-  ctx.save();
-  const pulse = 0.4 + 0.3 * Math.sin(t * 2 + seed);
-  ctx.shadowColor = "#00ccff";
-  ctx.shadowBlur = 12 * s * pulse;
-
-  // Bottle body — rounded rectangle
-  const bodyW = bw * 0.3;
-  const bodyH = bh * 0.55;
-  const bodyX = -bodyW / 2;
-  const bodyY = -bodyH * 0.4;
-  const r = bodyW * 0.25;
-  ctx.fillStyle = "rgba(60, 150, 200, 0.55)";
-  ctx.beginPath();
-  ctx.moveTo(bodyX + r, bodyY);
-  ctx.lineTo(bodyX + bodyW - r, bodyY);
-  ctx.quadraticCurveTo(bodyX + bodyW, bodyY, bodyX + bodyW, bodyY + r);
-  ctx.lineTo(bodyX + bodyW, bodyY + bodyH - r);
-  ctx.quadraticCurveTo(bodyX + bodyW, bodyY + bodyH, bodyX + bodyW - r, bodyY + bodyH);
-  ctx.lineTo(bodyX + r, bodyY + bodyH);
-  ctx.quadraticCurveTo(bodyX, bodyY + bodyH, bodyX, bodyY + bodyH - r);
-  ctx.lineTo(bodyX, bodyY + r);
-  ctx.quadraticCurveTo(bodyX, bodyY, bodyX + r, bodyY);
-  ctx.closePath();
-  ctx.fill();
-
-  // Neck
-  const neckW = bodyW * 0.4;
-  const neckH = bodyH * 0.3;
-  ctx.fillStyle = "rgba(50, 140, 200, 0.7)";
-  ctx.fillRect(-neckW / 2, bodyY - neckH, neckW, neckH);
-
-  // Cap
-  const capW = neckW * 1.3;
-  const capH = bodyH * 0.1;
-  ctx.fillStyle = "rgba(200, 220, 240, 0.85)";
-  ctx.fillRect(-capW / 2, bodyY - neckH - capH, capW, capH);
-
-  ctx.restore(); // end glow
-
-  // Label stripe
-  if (s > 0.25) {
-    ctx.fillStyle = "rgba(180, 220, 255, 0.25)";
-    ctx.fillRect(bodyX + bodyW * 0.1, bodyY + bodyH * 0.3, bodyW * 0.8, bodyH * 0.2);
-  }
-
-  // Glass reflection highlight
-  ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
-  ctx.fillRect(bodyX + bodyW * 0.1, bodyY + bodyH * 0.05, bodyW * 0.15, bodyH * 0.85);
-  // Bottom inner light
-  ctx.fillStyle = "rgba(100, 200, 255, 0.08)";
-  ctx.beginPath();
-  ctx.ellipse(0, bodyY + bodyH * 0.85, bodyW * 0.35, bodyH * 0.08, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Danger glow when close
-  if (s > 1.0) {
-    const dp = 0.5 + 0.5 * Math.sin(t * 6);
-    ctx.fillStyle = `rgba(0, 200, 255, ${(s - 1.0) * 0.1 * (0.6 + 0.4 * dp)})`;
-    ctx.beginPath(); ctx.ellipse(0, 0, bw * 0.35, bh * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-/* ─── Bag (fast) ─── */
-function drawBag(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
-  const s = z.screenScale;
-  const bw = z.width * s;
-  const bh = z.height * s;
-  const seed = getTrashSeed(z.id);
-  const bob = Math.sin(t * 2.5 + seed * 3) * bh * 0.03;
-
-  ctx.save();
-  ctx.translate(z.x, z.y + bob);
-
-  // Ghostly glow
-  ctx.save();
-  const pulse = 0.3 + 0.3 * Math.sin(t * 3 + seed);
-  ctx.shadowColor = "rgba(220, 240, 255, 0.8)";
-  ctx.shadowBlur = 18 * s * pulse;
-
-  // Wobbly blob using sin waves on a circle
-  const radius = bw * 0.28;
-  const points = 24;
-  ctx.fillStyle = `rgba(220, 230, 240, ${0.3 + 0.1 * Math.sin(t * 2 + seed)})`;
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + 0.1 * Math.sin(t * 2.5 + seed)})`;
-  ctx.lineWidth = Math.max(1, 1.5 * s);
-  ctx.beginPath();
-  for (let i = 0; i <= points; i++) {
-    const angle = (i / points) * Math.PI * 2;
-    const wobble = 1 + 0.15 * Math.sin(angle * 3 + t * 4 + seed) + 0.1 * Math.sin(angle * 5 - t * 2.5);
-    const rx = radius * wobble * Math.cos(angle);
-    const ry = radius * wobble * 1.1 * Math.sin(angle);
-    if (i === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.restore(); // end glow
-
-  // Handles at the top
-  if (s > 0.15) {
-    ctx.strokeStyle = "rgba(220, 235, 250, 0.5)";
-    ctx.lineWidth = Math.max(1.5, 2.5 * s);
-    ctx.lineCap = "round";
-    const handleSway = Math.sin(t * 3 + seed) * 3 * s;
-    ctx.beginPath(); ctx.moveTo(-bw * 0.08, -bw * 0.25); ctx.quadraticCurveTo(-bw * 0.12 + handleSway, -bw * 0.4, -bw * 0.02, -bw * 0.35); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bw * 0.08, -bw * 0.25); ctx.quadraticCurveTo(bw * 0.12 + handleSway, -bw * 0.4, bw * 0.02, -bw * 0.35); ctx.stroke();
-  }
-
-  // Danger glow
-  if (s > 1.0) {
-    const dp = 0.5 + 0.5 * Math.sin(t * 6);
-    ctx.fillStyle = `rgba(200, 220, 255, ${(s - 1.0) * 0.1 * (0.6 + 0.4 * dp)})`;
-    ctx.beginPath(); ctx.ellipse(0, 0, bw * 0.4, bh * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-/* ─── Barrel (tank) ─── */
-function drawBarrel(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
-  const s = z.screenScale;
-  const bw = z.width * s;
-  const bh = z.height * s;
-  const seed = getTrashSeed(z.id);
-  const bob = Math.sin(t * 1.0 + seed * 2) * bh * 0.01;
-  const sway = Math.sin(t * 0.5 + seed) * 0.03;
-
-  ctx.save();
-  ctx.translate(z.x, z.y + bob);
-  ctx.rotate(sway);
-
-  // Warm glow
-  ctx.save();
-  const pulse = 0.4 + 0.2 * Math.sin(t * 1.5 + seed);
-  ctx.shadowColor = "#ff8833";
-  ctx.shadowBlur = 14 * s * pulse;
-
-  // Barrel body — thick rectangle
-  const bodyW = bw * 0.5;
-  const bodyH = bh * 0.6;
-  const bodyX = -bodyW / 2;
-  const bodyY = -bodyH * 0.45;
-  ctx.fillStyle = "#8B5E3C";
-  ctx.fillRect(bodyX, bodyY, bodyW, bodyH);
-
-  // Rim bands
-  ctx.fillStyle = "#6B4226";
-  const bandH = bodyH * 0.06;
-  ctx.fillRect(bodyX, bodyY, bodyW, bandH);
-  ctx.fillRect(bodyX, bodyY + bodyH - bandH, bodyW, bandH);
-  ctx.fillRect(bodyX, bodyY + bodyH * 0.47, bodyW, bandH);
-
-  ctx.restore(); // end glow
-
-  // Hazard stripes
-  if (s > 0.2) {
-    ctx.save();
-    ctx.globalAlpha = 0.5;
-    const stripeW = bodyW * 0.15;
-    const stripeCount = Math.floor(bodyW / stripeW);
-    for (let i = 0; i < stripeCount; i++) {
-      if (i % 2 === 0) {
-        ctx.fillStyle = "#FFD700";
-        ctx.fillRect(bodyX + i * stripeW, bodyY + bodyH * 0.2, stripeW, bodyH * 0.2);
-      } else {
-        ctx.fillStyle = "#222";
-        ctx.fillRect(bodyX + i * stripeW, bodyY + bodyH * 0.2, stripeW, bodyH * 0.2);
-      }
-    }
-    ctx.restore();
-  }
-
-  // Rust patches
-  if (s > 0.25) {
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = "#8B4513";
-    // Irregular rust spots
-    for (let ri = 0; ri < 3; ri++) {
-      const rx = bodyX + seededRandom(seed + ri * 11 + 50) * bodyW;
-      const ry = bodyY + seededRandom(seed + ri * 11 + 51) * bodyH;
-      const rr = (3 + seededRandom(seed + ri * 11 + 52) * 5) * s;
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, rr, rr * 0.7, seededRandom(seed + ri * 11 + 53) * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // Hazard triangle symbol
-  if (s > 0.35) {
-    const triSize = Math.max(6, 10 * s);
-    const triY = bodyY + bodyH * 0.62;
-    ctx.fillStyle = "rgba(255, 200, 0, 0.7)";
-    ctx.beginPath();
-    ctx.moveTo(0, triY - triSize);
-    ctx.lineTo(triSize * 0.85, triY + triSize * 0.5);
-    ctx.lineTo(-triSize * 0.85, triY + triSize * 0.5);
-    ctx.closePath();
-    ctx.fill();
-    // Exclamation inside
-    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-    ctx.font = `bold ${Math.max(6, 9 * s)}px sans-serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("!", 0, triY);
-  }
-
-  // Danger glow
-  if (s > 1.0) {
-    const dp = 0.5 + 0.5 * Math.sin(t * 6);
-    ctx.fillStyle = `rgba(255, 136, 50, ${(s - 1.0) * 0.1 * (0.6 + 0.4 * dp)})`;
-    ctx.beginPath(); ctx.ellipse(0, 0, bw * 0.4, bh * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-/* ─── Net (exploder) ─── */
-function drawNet(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
-  const s = z.screenScale;
-  const bw = z.width * s;
-  const bh = z.height * s;
-  const seed = getTrashSeed(z.id);
-  const bob = Math.sin(t * 1.8 + seed * 3) * bh * 0.02;
-
-  ctx.save();
-  ctx.translate(z.x, z.y + bob);
-
-  // Green glow aura
-  const pulse = 0.4 + 0.3 * Math.sin(t * 3.5 + seed);
-  ctx.save();
-  ctx.shadowColor = "#33cc33";
-  ctx.shadowBlur = 16 * s * pulse;
-
-  // Diamond shape with criss-cross mesh
-  const dw = bw * 0.35;
-  const dh = bh * 0.45;
-  ctx.strokeStyle = `rgba(30, 120, 50, ${0.6 + 0.2 * Math.sin(t * 2 + seed)})`;
-  ctx.lineWidth = Math.max(1.5, 2.5 * s);
-  ctx.lineCap = "round";
-
-  // Diamond outline
-  ctx.beginPath();
-  ctx.moveTo(0, -dh); ctx.lineTo(dw, 0); ctx.lineTo(0, dh); ctx.lineTo(-dw, 0);
-  ctx.closePath();
-  ctx.fillStyle = `rgba(40, 100, 50, ${0.15 + 0.1 * pulse})`;
-  ctx.fill();
-  ctx.stroke();
-
-  // Criss-cross lines
-  const meshLines = 4;
-  ctx.lineWidth = Math.max(1, 1.5 * s);
-  ctx.strokeStyle = `rgba(40, 150, 60, ${0.4 + 0.15 * Math.sin(t * 2.5 + seed)})`;
-  for (let i = 1; i < meshLines; i++) {
-    const frac = i / meshLines;
-    // Lines from top-left edge to bottom-right edge
-    const x1 = -dw * (1 - frac); const y1 = -dh * frac;
-    const x2 = dw * frac; const y2 = dh * (1 - frac);
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    // Lines from top-right edge to bottom-left edge
-    const x3 = dw * (1 - frac); const y3 = -dh * frac;
-    const x4 = -dw * frac; const y4 = dh * (1 - frac);
-    ctx.beginPath(); ctx.moveTo(x3, y3); ctx.lineTo(x4, y4); ctx.stroke();
-  }
-
-  ctx.restore(); // end glow
-
-  // Knots at intersections
-  if (s > 0.3) {
-    ctx.fillStyle = `rgba(60, 180, 80, ${0.5 + 0.2 * pulse})`;
-    for (let i = 1; i < meshLines; i++) {
-      for (let j = 1; j < meshLines; j++) {
-        const fx = (i / meshLines - 0.5) * 2;
-        const fy = (j / meshLines - 0.5) * 2;
-        if (Math.abs(fx) + Math.abs(fy) < 1) {
-          ctx.beginPath(); ctx.arc(fx * dw, fy * dh, 2 * s, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-    }
-  }
-
-  // Rope fraying at edges
-  if (s > 0.25) {
-    ctx.strokeStyle = `rgba(60, 140, 70, 0.3)`;
-    ctx.lineWidth = Math.max(0.5, 1 * s);
-    for (let fi = 0; fi < 4; fi++) {
-      const angle = (fi / 4) * Math.PI * 2 + t * 0.3;
-      const fx = Math.cos(angle) * dw * 1.05;
-      const fy = Math.sin(angle) * dh * 1.05;
-      ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.lineTo(fx + Math.cos(angle) * 5 * s, fy + Math.sin(angle) * 5 * s);
-      ctx.stroke();
-    }
-  }
-
-  // Danger glow
-  if (s > 1.0) {
-    const dp = 0.5 + 0.5 * Math.sin(t * 6);
-    ctx.fillStyle = `rgba(50, 200, 50, ${(s - 1.0) * 0.1 * (0.6 + 0.4 * dp)})`;
-    ctx.beginPath(); ctx.ellipse(0, 0, bw * 0.4, bh * 0.45, 0, 0, Math.PI * 2); ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-/* ─── Barge (boss) ─── */
-function drawBarge(ctx: CanvasRenderingContext2D, z: TrashItem, t: number): void {
-  const s = z.screenScale;
-  const bw = z.width * s;
-  const bh = z.height * s;
-  const seed = getTrashSeed(z.id);
-  const bob = Math.sin(t * 0.8 + seed) * bh * 0.015;
-  const sway = Math.sin(t * 0.4 + seed) * 0.02;
-
-  ctx.save();
-  ctx.translate(z.x, z.y + bob);
-  ctx.rotate(sway);
-
-  // Menacing red-orange glow
-  ctx.save();
-  const pulse = 0.4 + 0.3 * Math.sin(t * 2 + seed);
-  ctx.shadowColor = "#ff4400";
-  ctx.shadowBlur = 22 * s * pulse;
-
-  // Hull — wide dark rectangle
-  const hullW = bw * 0.7;
-  const hullH = bh * 0.3;
-  const hullX = -hullW / 2;
-  const hullY = -hullH * 0.3;
-  ctx.fillStyle = "#3a3a3a";
-  ctx.fillRect(hullX, hullY, hullW, hullH);
-
-  // Hull edge highlight
-  ctx.strokeStyle = "rgba(100, 100, 100, 0.5)";
-  ctx.lineWidth = Math.max(1, 2 * s);
-  ctx.strokeRect(hullX, hullY, hullW, hullH);
-
-  ctx.restore(); // end glow
-
-  // Piled trash silhouettes on top
-  if (s > 0.15) {
-    ctx.save();
-    const pileY = hullY;
-
-    // Background pile mass
-    ctx.fillStyle = "rgba(70, 60, 45, 0.7)";
-    ctx.beginPath();
-    ctx.moveTo(-hullW * 0.4, pileY);
-    ctx.bezierCurveTo(-hullW * 0.35, pileY - bh * 0.15, -hullW * 0.1, pileY - bh * 0.25, 0, pileY - bh * 0.28);
-    ctx.bezierCurveTo(hullW * 0.15, pileY - bh * 0.22, hullW * 0.35, pileY - bh * 0.12, hullW * 0.4, pileY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Individual trash silhouettes on the pile
-    // Mini barrel
-    ctx.fillStyle = "rgba(100, 70, 30, 0.65)";
-    ctx.fillRect(-hullW * 0.25, pileY - bh * 0.18, hullW * 0.1, bh * 0.12);
-    // Mini bottle
-    ctx.fillStyle = "rgba(60, 130, 180, 0.5)";
-    ctx.fillRect(hullW * 0.05, pileY - bh * 0.2, hullW * 0.04, bh * 0.14);
-    ctx.fillRect(hullW * 0.055, pileY - bh * 0.23, hullW * 0.03, bh * 0.04);
-    // Mini bag blob
-    ctx.fillStyle = "rgba(200, 210, 220, 0.4)";
-    ctx.beginPath();
-    ctx.arc(hullW * 0.2, pileY - bh * 0.12, bw * 0.04, 0, Math.PI * 2);
-    ctx.fill();
-    // Crate shape
-    ctx.fillStyle = "rgba(90, 75, 50, 0.6)";
-    ctx.fillRect(-hullW * 0.08, pileY - bh * 0.15, hullW * 0.12, bh * 0.1);
-    // Net draped over
-    if (s > 0.3) {
-      ctx.strokeStyle = "rgba(40, 120, 50, 0.3)";
-      ctx.lineWidth = Math.max(0.5, 1 * s);
-      for (let ni = 0; ni < 5; ni++) {
-        const nx = -hullW * 0.3 + ni * hullW * 0.15;
-        ctx.beginPath();
-        ctx.moveTo(nx, pileY - bh * 0.1);
-        ctx.quadraticCurveTo(nx + hullW * 0.05, pileY - bh * 0.22, nx + hullW * 0.1, pileY - bh * 0.08);
-        ctx.stroke();
-      }
-    }
-
-    ctx.restore();
-  }
-
-  // Red-orange glow line at waterline
-  if (s > 0.2) {
-    const glowAlpha = 0.3 + 0.2 * pulse;
-    ctx.strokeStyle = `rgba(255, 80, 20, ${glowAlpha})`;
-    ctx.lineWidth = Math.max(2, 3 * s);
-    ctx.beginPath();
-    ctx.moveTo(hullX, hullY + hullH);
-    ctx.lineTo(hullX + hullW, hullY + hullH);
-    ctx.stroke();
-  }
-
-  // Danger glow when close
-  if (s > 1.0) {
-    const dp = 0.5 + 0.5 * Math.sin(t * 6);
-    ctx.fillStyle = `rgba(255, 60, 20, ${(s - 1.0) * 0.12 * (0.6 + 0.4 * dp)})`;
-    ctx.beginPath(); ctx.ellipse(0, 0, bw * 0.5, bh * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+  if (sprite) {
+    ctx.drawImage(sprite, -bw / 2, -bh, bw, bh);
+  } else {
+    // Fallback colored rectangle while loading
+    ctx.fillStyle = z.trashType === "barge" ? "#8B4513" : "#4488aa";
+    ctx.fillRect(-bw / 2, -bh, bw, bh);
   }
 
   ctx.restore();
