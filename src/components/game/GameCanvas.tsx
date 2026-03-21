@@ -323,15 +323,17 @@ export default function GameCanvas() {
         hit = raycastFromPoint(state.trashItems, cx, cy, dx / len, dy / len);
       }
     }
-    // Final fallback: find nearest alive item within 80px of tap point
+    // Final fallback: find nearest alive item within range of tap point.
+    // Far items (low depth) get a larger search radius since they're tiny on screen.
     if (!hit) {
-      let bestDist = 80;
+      let bestDist = Infinity;
       for (const z of state.trashItems) {
         if (!z.alive) continue;
         const ddx = z.x - targetX;
         const ddy = z.y - targetY;
         const d = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (d < bestDist) {
+        const radius = z.depth < 0.3 ? 150 : z.depth < 0.6 ? 100 : 60;
+        if (d < radius && d < bestDist) {
           bestDist = d;
           hit = z;
         }
