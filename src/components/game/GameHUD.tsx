@@ -16,7 +16,7 @@ export default function GameHUD({
   return (
     <>
       {/* Top bar: Wave + Pause */}
-      <div className="absolute top-4 left-0 right-0 px-4 flex items-center justify-between">
+      <div className="absolute top-4 left-0 right-0 px-4 flex items-center justify-between pointer-events-none">
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 sm:px-4 py-1.5 sm:py-2">
           <span className={`font-mono font-bold text-xs sm:text-sm ${isSurgeWave ? "text-red-400" : "text-white/70"}`}>
             {isSurgeWave ? `SURGE WAVE ${wave}` : `WAVE ${wave}`}
@@ -24,7 +24,7 @@ export default function GameHUD({
         </div>
         <button
           onClick={onPause}
-          className="bg-black/50 backdrop-blur-sm text-white/80 rounded-lg px-4 py-1.5 sm:py-2 text-sm font-semibold hover:bg-black/60 transition-colors"
+          className="pointer-events-auto bg-black/50 backdrop-blur-sm text-white/80 rounded-lg px-4 py-1.5 sm:py-2 text-sm font-semibold hover:bg-black/60 transition-colors"
           aria-label="Pause"
         >
           Pause
@@ -32,7 +32,7 @@ export default function GameHUD({
       </div>
 
       {/* Bottom bar: Health + Score */}
-      <div className="absolute bottom-16 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3">
+      <div className="absolute bottom-16 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
         {/* Health */}
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
           <span className="text-white font-semibold text-xs sm:text-sm whitespace-nowrap">Reef:</span>

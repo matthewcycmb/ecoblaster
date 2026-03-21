@@ -400,9 +400,11 @@ export default function GameCanvas() {
     [handleFire]
   );
 
-  // Click to fire
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Pointer down to fire (works instantly on both mobile touch and desktop click)
+  const handleCanvasPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      // Prevent double-firing from touch generating both pointer and click events
+      e.preventDefault();
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
       const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -574,8 +576,8 @@ export default function GameCanvas() {
     <div className="relative flex items-center justify-center w-full h-screen bg-game-bg overflow-hidden">
       <canvas
         ref={canvasRef}
-        onClick={handleCanvasClick}
-        className="cursor-crosshair"
+        onPointerDown={handleCanvasPointerDown}
+        className="cursor-crosshair touch-none"
       />
 
       {cameraActive && (
