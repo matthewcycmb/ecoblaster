@@ -42,8 +42,8 @@ function getTrashAABB(z: TrashItem): TrashAABB {
     topOffset = bh * 0.32 + bw * 0.22 * 1.2;
   }
 
-  // Base 10% forgiving margin, scaled by hitMarginMult (1.0 normal, 1.5 easy)
-  const margin = 1.10 * hitMarginMult;
+  // Base margin, scaled by hitMarginMult
+  const margin = 1.0 * hitMarginMult;
   halfW *= margin;
   const top = z.y - topOffset * margin;
   const bottom = z.y + bottomOffset * margin;
@@ -109,8 +109,8 @@ export function findClosestTrashAtPoint(
     const boxHalfDiag = Math.sqrt(
       ((bb.right - bb.left) / 2) ** 2 + ((bb.bottom - bb.top) / 2) ** 2
     );
-    // Accept within 30% beyond the bounding box diagonal
-    if (dist < boxHalfDiag * 1.30 && dist < closestDist) {
+    // Accept within 15% beyond the bounding box diagonal
+    if (dist < boxHalfDiag * 1.15 && dist < closestDist) {
       closest = z;
       closestDist = dist;
     }

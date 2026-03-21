@@ -332,7 +332,7 @@ export default function GameCanvas() {
         const ddx = z.x - targetX;
         const ddy = z.y - targetY;
         const d = Math.sqrt(ddx * ddx + ddy * ddy);
-        const radius = z.depth < 0.3 ? 150 : z.depth < 0.6 ? 100 : 60;
+        const radius = z.depth < 0.3 ? 80 : z.depth < 0.6 ? 50 : 35;
         if (d < radius && d < bestDist) {
           bestDist = d;
           hit = z;
