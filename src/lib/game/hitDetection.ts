@@ -48,27 +48,13 @@ function getTrashAABB(z: TrashItem): TrashAABB {
   const top = z.y - topOffset * margin;
   const bottom = z.y + bottomOffset * margin;
 
-  // Enforce minimum tap target size (24px half-width, 48px height) for mobile usability.
-  // Far-away items at low screenScale would otherwise be nearly impossible to tap.
-  const MIN_HALF_W = 24;
-  const MIN_HEIGHT = 48;
-  const actualHalfW = Math.max(halfW, MIN_HALF_W);
-  const actualHeight = bottom - top;
-  let actualTop = top;
-  let actualBottom = bottom;
-  if (actualHeight < MIN_HEIGHT) {
-    const center = (top + bottom) / 2;
-    actualTop = center - MIN_HEIGHT / 2;
-    actualBottom = center + MIN_HEIGHT / 2;
-  }
-
   return {
-    left: z.x - actualHalfW,
-    right: z.x + actualHalfW,
-    top: actualTop,
-    bottom: actualBottom,
+    left: z.x - halfW,
+    right: z.x + halfW,
+    top,
+    bottom,
     centerX: z.x,
-    centerY: (actualTop + actualBottom) / 2,
+    centerY: (top + bottom) / 2,
   };
 }
 
