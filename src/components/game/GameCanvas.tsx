@@ -323,6 +323,20 @@ export default function GameCanvas() {
         hit = raycastFromPoint(state.trashItems, cx, cy, dx / len, dy / len);
       }
     }
+    // Final fallback: find nearest alive item within 80px of tap point
+    if (!hit) {
+      let bestDist = 80;
+      for (const z of state.trashItems) {
+        if (!z.alive) continue;
+        const ddx = z.x - targetX;
+        const ddy = z.y - targetY;
+        const d = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (d < bestDist) {
+          bestDist = d;
+          hit = z;
+        }
+      }
+    }
     if (hit) {
       hit.hp--;
       if (hit.hp <= 0) {
