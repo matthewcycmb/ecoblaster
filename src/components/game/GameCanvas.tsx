@@ -610,41 +610,41 @@ export default function GameCanvas() {
 
       {/* Camera status overlays */}
       {cameraActive && trackerStatus === "requesting-camera" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50">
-          <h2 className="text-2xl font-bold text-white mb-2">Request Camera Permission</h2>
-          <p className="text-muted-foreground text-center max-w-sm">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50 px-6">
+          <h2 className="text-base sm:text-2xl font-bold text-white mb-2 text-center">Request Camera Permission</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-sm">
             Reef Defender needs your webcam to detect your hand gesture.
           </p>
         </div>
       )}
 
       {cameraActive && trackerStatus === "initializing" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50">
-          <h2 className="text-xl font-bold text-white mb-2">Loading hand tracker...</h2>
-          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50 px-6">
+          <h2 className="text-base sm:text-xl font-bold text-white mb-3 text-center">Loading hand tracker...</h2>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
       {cameraActive && trackerStatus === "camera-denied" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50">
-          <h2 className="text-xl font-bold text-white mb-2">Camera Access Denied</h2>
-          <p className="text-muted-foreground text-center max-w-sm mb-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50 px-6">
+          <h2 className="text-base sm:text-xl font-bold text-white mb-2 text-center">Camera Access Denied</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-sm mb-4">
             Camera access denied. To play, enable camera permissions in your browser settings.
           </p>
           <div className="flex gap-3">
-            <button onClick={() => window.location.reload()} className="rounded-lg bg-game-primary px-6 py-2 text-white font-semibold">Retry</button>
-            <button onClick={() => (window.location.href = "/")} className="rounded-lg bg-white px-6 py-2 text-game-primary font-semibold border border-game-primary">Quit</button>
+            <button onClick={() => window.location.reload()} className="rounded-lg bg-game-primary px-4 sm:px-6 py-2 text-white text-sm font-semibold">Retry</button>
+            <button onClick={() => (window.location.href = "/")} className="rounded-lg bg-white px-4 sm:px-6 py-2 text-game-primary text-sm font-semibold border border-game-primary">Quit</button>
           </div>
         </div>
       )}
 
       {cameraActive && trackerStatus === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50">
-          <h2 className="text-xl font-bold text-white mb-2">Tracking Engine Error</h2>
-          <p className="text-muted-foreground text-center max-w-sm mb-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-50 px-6">
+          <h2 className="text-base sm:text-xl font-bold text-white mb-2 text-center">Tracking Engine Error</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-sm mb-4">
             Tracking engine failed to load. Try reloading the page.
           </p>
-          <button onClick={() => window.location.reload()} className="rounded-lg bg-game-danger px-6 py-2 text-white font-semibold">Reload</button>
+          <button onClick={() => window.location.reload()} className="rounded-lg bg-game-danger px-4 sm:px-6 py-2 text-white text-sm font-semibold">Reload</button>
         </div>
       )}
 
