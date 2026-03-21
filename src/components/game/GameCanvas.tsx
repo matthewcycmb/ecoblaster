@@ -236,7 +236,7 @@ export default function GameCanvas() {
       state.surgeCleared = true;
     }
 
-    maybeDropPowerUp(state, z.x, z.y, z.id);
+    maybeDropPowerUp(state, z.x, z.y, z.id, settingsRef.current.difficulty);
 
     const toastText = killScore > BASE_SCORE_PER_KILL
       ? `+${killScore} (x${state.combo.multiplier})`
