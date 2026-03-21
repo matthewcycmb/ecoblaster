@@ -31,7 +31,7 @@ export default function TutorialOverlay({ onComplete }: { onComplete?: () => voi
     >
       {/* Animated hand icon */}
       <div
-        className="text-8xl sm:text-9xl mb-4"
+        className="text-6xl sm:text-8xl mb-3 sm:mb-4"
         style={{
           animation: "tutorial-bob 1.5s ease-in-out infinite",
           filter: "drop-shadow(0 0 20px rgba(0,200,255,0.4))",
@@ -41,14 +41,14 @@ export default function TutorialOverlay({ onComplete }: { onComplete?: () => voi
       </div>
 
       <p
-        className="text-3xl sm:text-4xl font-black text-white text-center px-6 tracking-wide"
+        className="text-xl sm:text-4xl font-black text-white text-center px-6 tracking-wide"
         style={{ textShadow: "0 0 20px rgba(0,200,255,0.5), 0 2px 8px rgba(0,0,0,0.8)" }}
       >
         Point your finger like a gun
       </p>
 
       <p
-        className="text-lg sm:text-xl text-cyan-300/80 mt-3 font-medium tracking-wide"
+        className="text-sm sm:text-xl text-cyan-300/80 mt-2 sm:mt-3 font-medium tracking-wide"
         style={{ textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}
       >
         Flick to shoot the trash!

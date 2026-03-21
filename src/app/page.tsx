@@ -54,27 +54,47 @@ export default function Home() {
       </div>
 
       {/* Title block */}
-      <div className="relative z-10 flex flex-col items-center mb-10 sm:mb-14">
+      <div className="relative z-10 flex flex-col items-center mb-8 sm:mb-10">
         {/* REEF */}
         <h1
-          className="text-5xl sm:text-7xl md:text-8xl font-bold text-center"
+          className="text-[2.8rem] sm:text-6xl md:text-7xl font-black text-center leading-none"
           style={{
             color: "#ffd54f",
-            textShadow:
-              "-2px -2px 0 #0a2a4a, 2px -2px 0 #0a2a4a, -2px 2px 0 #0a2a4a, 2px 2px 0 #0a2a4a, 0 -2px 0 #0a2a4a, 0 2px 0 #0a2a4a, -2px 0 0 #0a2a4a, 2px 0 0 #0a2a4a, 4px 4px 0 #051525",
-            letterSpacing: "0.15em",
+            WebkitTextStroke: "2px #0a2a4a",
+            paintOrder: "stroke fill",
+            textShadow: [
+              "0 2px 0 #0a2a4a",
+              "0 4px 0 #0a2a4a",
+              "0 6px 0 #082040",
+              "0 8px 0 #061830",
+              "0 10px 0 #041020",
+              "0 12px 0 #030c18",
+              "0 14px 12px rgba(0,0,0,0.5)",
+              "0 0 20px rgba(255,213,79,0.15)",
+            ].join(", "),
+            letterSpacing: "0.12em",
           }}
         >
           REEF
         </h1>
         {/* DEFENDER */}
         <h1
-          className="text-4xl sm:text-6xl md:text-7xl font-bold text-center mt-2 sm:mt-4"
+          className="text-[2.2rem] sm:text-5xl md:text-6xl font-black text-center leading-none mt-2 sm:mt-3"
           style={{
             color: "#70d4f0",
-            textShadow:
-              "-2px -2px 0 #0a2a4a, 2px -2px 0 #0a2a4a, -2px 2px 0 #0a2a4a, 2px 2px 0 #0a2a4a, 0 -2px 0 #0a2a4a, 0 2px 0 #0a2a4a, -2px 0 0 #0a2a4a, 2px 0 0 #0a2a4a, 4px 4px 0 #051525",
-            letterSpacing: "0.15em",
+            WebkitTextStroke: "2px #0a2a4a",
+            paintOrder: "stroke fill",
+            textShadow: [
+              "0 2px 0 #0a2a4a",
+              "0 4px 0 #0a2a4a",
+              "0 6px 0 #082040",
+              "0 8px 0 #061830",
+              "0 10px 0 #041020",
+              "0 12px 0 #030c18",
+              "0 14px 12px rgba(0,0,0,0.5)",
+              "0 0 20px rgba(112,212,240,0.15)",
+            ].join(", "),
+            letterSpacing: "0.12em",
           }}
         >
           DEFENDER
@@ -82,16 +102,16 @@ export default function Home() {
       </div>
 
       {/* Menu items - pixel style */}
-      <nav className="relative z-10 flex flex-col gap-2 items-center">
+      <nav className="relative z-10 flex flex-col gap-3 items-center">
         {menuItems.map((item, i) => {
           const isSelected = selectedIndex === i;
           const content = (
             <div
-              className="relative px-6 py-2.5 cursor-pointer transition-all text-center"
+              className="relative px-6 py-2 cursor-pointer transition-all text-center"
               onMouseEnter={() => setSelectedIndex(i)}
               style={{ fontFamily: "var(--font-pixel), monospace" }}
             >
-              {/* Selection arrow — absolutely positioned so it doesn't shift text */}
+              {/* Selection arrow */}
               <span
                 className="absolute -left-2 top-1/2 -translate-y-1/2 text-sm sm:text-base"
                 style={{
@@ -135,7 +155,7 @@ export default function Home() {
 
       {/* Footer hint */}
       <p
-        className="relative z-10 mt-10 text-center px-4"
+        className="absolute bottom-[env(safe-area-inset-bottom,8px)] pb-2 left-1/2 -translate-x-1/2 z-10 text-center px-4"
         style={{
           fontFamily: "var(--font-pixel), monospace",
           fontSize: "8px",

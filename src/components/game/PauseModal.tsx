@@ -18,7 +18,7 @@ export default function PauseModal({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50">
-      <div className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col items-center gap-6 min-w-[300px]">
+      <div className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-6 sm:p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col items-center gap-4 sm:gap-6 w-[85vw] max-w-[300px]">
         <h2 className="text-2xl font-bold text-cyan-400">Paused</h2>
         <div className="flex flex-col gap-3 w-full">
           <button

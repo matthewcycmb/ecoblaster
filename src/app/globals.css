@@ -136,7 +136,7 @@ html, body {
 }
 
 .game-title {
-  text-shadow: 0 0 20px #22d3ee88, 0 0 40px #22d3ee44, 0 0 80px #22d3ee22;
+  text-shadow: 0 0 12px #22d3ee55, 0 0 30px #22d3ee22;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

@@ -650,18 +650,16 @@ export default function GameCanvas() {
 
       {/* Idle state — name input + start (hidden while camera is loading) */}
       {phase === "idle" && !cameraActive && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-40">
-          <h2 className="game-title text-4xl sm:text-5xl font-black text-cyan-400 mb-2 tracking-widest">
-            Reef Defender
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-40 px-6">
+          <h2 className="game-title text-xl sm:text-3xl font-black text-cyan-400 mb-3 sm:mb-4 tracking-widest text-center">
+            REEF DEFENDER
           </h2>
-          <p className="game-subtitle text-gray-400 mb-6 text-center max-w-sm tracking-wide">
+          <p className="game-subtitle text-[10px] sm:text-xs text-gray-400/70 mb-5 sm:mb-7 text-center tracking-wide">
             Protect the reef with your hands.
           </p>
 
-          <div className="w-40 h-px bg-gradient-to-r from-transparent via-teal-400/40 to-transparent mb-6" />
-
-          <div className="flex flex-col gap-2 mb-6 w-72">
-            <label className="text-gray-300 text-sm font-medium tracking-wide uppercase">Player Name</label>
+          <div className="flex flex-col items-center gap-1.5 sm:gap-2 mb-4 sm:mb-5 w-full max-w-64 sm:max-w-72">
+            <label className="text-gray-400 text-[10px] sm:text-xs font-medium tracking-wide uppercase self-start">Player Name</label>
             <input
               type="text"
               value={playerName}
@@ -669,22 +667,22 @@ export default function GameCanvas() {
               onKeyDown={(e) => { if (e.key === "Enter") handleStartGame(); }}
               maxLength={32}
               placeholder="Enter your name"
-              className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-400/60 tracking-wide"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 sm:px-4 py-2 sm:py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-400/40 tracking-wide text-sm"
             />
-            {nameError && <p className="text-sm text-red-400">{nameError}</p>}
+            {nameError && <p className="text-xs text-red-400">{nameError}</p>}
           </div>
 
           <button
             onClick={handleStartGame}
-            className="game-menu-btn rounded-lg bg-teal-500 border border-teal-400/50 px-10 py-3 text-lg font-bold text-white tracking-wider uppercase hover:bg-teal-400 transition-colors"
+            className="game-menu-btn w-full max-w-64 sm:max-w-72 rounded-lg bg-teal-500 border border-teal-400/50 py-2 sm:py-2.5 text-sm sm:text-base font-bold text-white tracking-wider uppercase hover:bg-teal-400 transition-colors"
           >
             Start Game
           </button>
 
-          <div className="flex gap-3 mt-5">
+          <div className="flex gap-2.5 sm:gap-3 mt-3 sm:mt-4">
             <button
               onClick={() => handleSetDifficulty("easy")}
-              className={`rounded-lg border px-5 py-2 text-sm font-bold tracking-wider uppercase transition-colors ${
+              className={`rounded-lg border px-4 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold tracking-wider uppercase transition-colors ${
                 difficulty === "easy"
                   ? "bg-emerald-500/90 border-emerald-400/60 text-white"
                   : "bg-white/5 border-white/15 text-gray-400 hover:bg-white/10"
@@ -694,7 +692,7 @@ export default function GameCanvas() {
             </button>
             <button
               onClick={() => handleSetDifficulty("normal")}
-              className={`rounded-lg border px-5 py-2 text-sm font-bold tracking-wider uppercase transition-colors ${
+              className={`rounded-lg border px-4 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold tracking-wider uppercase transition-colors ${
                 difficulty === "normal"
                   ? "bg-amber-500/90 border-amber-400/60 text-white"
                   : "bg-white/5 border-white/15 text-gray-400 hover:bg-white/10"
@@ -704,7 +702,7 @@ export default function GameCanvas() {
             </button>
           </div>
 
-          <p className="text-xs text-gray-600 mt-6 tracking-wide">Press P to pause during gameplay</p>
+          <p className="text-[8px] sm:text-[10px] text-gray-600/60 mt-4 sm:mt-5 tracking-wide text-center">Tap pause button to pause</p>
         </div>
       )}
 
