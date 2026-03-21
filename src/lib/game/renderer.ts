@@ -8,7 +8,6 @@ import {
   POWERUP_LIFETIME_MS,
   PISTOL_Y_OFFSET,
   PISTOL_BARREL_LENGTH,
-  PISTOL_GRIP_HEIGHT,
   PISTOL_RECOIL_DURATION_MS,
   PISTOL_RECOIL_ANGLE,
   PISTOL_RECOIL_OFFSET,
@@ -67,6 +66,19 @@ function loadBgImage(): void {
   const img = new window.Image();
   img.src = "/game-bg.jpg";
   img.onload = () => { bgImage = img; };
+}
+
+/* ─── Coral Monster Sprite ─── */
+
+let monsterImage: HTMLImageElement | null = null;
+let monsterImageLoading = false;
+
+function loadMonsterImage(): void {
+  if (monsterImage || monsterImageLoading || typeof window === "undefined") return;
+  monsterImageLoading = true;
+  const img = new window.Image();
+  img.src = "/coral-monster.png";
+  img.onload = () => { monsterImage = img; };
 }
 
 /* ─── Main Render Entry ─── */
@@ -179,7 +191,20 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
   // Draw pixel art background image, covering the full canvas
   if (bgImage) {
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(bgImage, 0, 0, w, h);
+    const isMobile = w < 768;
+    if (isMobile) {
+      // On narrow screens, crop to the center of the image to hide side coral/rocks
+      // and show only the open water area, with just bottom reef visible
+      const imgW = bgImage.naturalWidth;
+      const imgH = bgImage.naturalHeight;
+      // Crop the center 40% horizontally to remove side framing
+      const cropMargin = imgW * 0.3;
+      const srcX = cropMargin;
+      const srcW = imgW - cropMargin * 2;
+      ctx.drawImage(bgImage, srcX, 0, srcW, imgH, 0, 0, w, h);
+    } else {
+      ctx.drawImage(bgImage, 0, 0, w, h);
+    }
   } else {
     // Fallback solid color while loading
     ctx.fillStyle = "#0a5a6e";
@@ -949,7 +974,7 @@ function drawPipWebcam(ctx: CanvasRenderingContext2D, video: HTMLVideoElement, c
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PISTOL
+   CORAL MONSTER (replaces pistol)
    ═══════════════════════════════════════════════════════════════ */
 
 interface PistolRenderResult { barrelTipX: number; barrelTipY: number; }
@@ -960,6 +985,8 @@ function drawPistol(
   state: GameState,
   aimX: number, aimY: number, hasAim: boolean
 ): PistolRenderResult {
+  loadMonsterImage();
+
   const pivotX = canvasWidth / 2;
   const pivotY = canvasHeight * PISTOL_Y_OFFSET;
 
@@ -967,7 +994,6 @@ function drawPistol(
   let angle = -Math.PI / 2;
   if (hasAim) {
     angle = Math.atan2(aimY - pivotY, aimX - pivotX);
-    // Clamp to upper hemisphere (pointing upward)
     angle = Math.max(-Math.PI + 0.1, Math.min(-0.1, angle));
   }
 
@@ -984,73 +1010,24 @@ function drawPistol(
   const recoilOff = PISTOL_RECOIL_OFFSET * recoilProgress;
   const finalAngle = angle + recoilAngle;
   const barrelL = PISTOL_BARREL_LENGTH;
-  const barrelW = 10;
+
+  // Draw coral monster sprite
+  const monsterH = 120;
+  const monsterW = monsterH * (198 / 246); // preserve aspect ratio
 
   ctx.save();
+  ctx.imageSmoothingEnabled = false; // pixel art crisp
   ctx.translate(pivotX, pivotY + recoilOff);
   ctx.rotate(finalAngle + Math.PI / 2);
 
-  // Cyan glow shadow for the whole blaster
-  ctx.shadowColor = "rgba(46, 196, 214, 0.5)";
-  ctx.shadowBlur = 12;
-
-  // Barrel (ocean blue gradient)
-  const barrelGrad = ctx.createLinearGradient(-barrelW / 2, 0, barrelW / 2, 0);
-  barrelGrad.addColorStop(0, "#1a6b8a"); barrelGrad.addColorStop(0.3, "#22a0b8");
-  barrelGrad.addColorStop(0.5, "#2ec4d6"); barrelGrad.addColorStop(0.7, "#22a0b8");
-  barrelGrad.addColorStop(1, "#1a6b8a");
-  ctx.fillStyle = barrelGrad;
-  ctx.fillRect(-barrelW / 2, -barrelL, barrelW, barrelL);
-  // Barrel highlight
-  ctx.fillStyle = "rgba(180,240,255,0.2)";
-  ctx.fillRect(-barrelW / 2 + 2, -barrelL, 2, barrelL);
-  // Muzzle cap
-  ctx.fillStyle = "#0e4f63";
-  ctx.fillRect(-barrelW / 2 - 1, -barrelL - 3, barrelW + 2, 5);
-
-  // Slide / receiver
-  const slideW = 14, slideH = 22;
-  ctx.fillStyle = "#18889e";
-  ctx.beginPath(); ctx.roundRect(-slideW / 2, -slideH, slideW, slideH, 2); ctx.fill();
-  // Serrations
-  ctx.strokeStyle = "rgba(0,40,60,0.4)"; ctx.lineWidth = 1;
-  for (let i = 0; i < 4; i++) {
-    const sy = -slideH + 4 + i * 4;
-    ctx.beginPath(); ctx.moveTo(-slideW / 2 + 2, sy); ctx.lineTo(slideW / 2 - 2, sy); ctx.stroke();
+  if (monsterImage) {
+    // Draw centered horizontally, extending upward from pivot
+    ctx.drawImage(monsterImage, -monsterW / 2, -monsterH, monsterW, monsterH);
   }
-
-  // Trigger guard
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = "#0e5a6b"; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(-4, 0); ctx.quadraticCurveTo(-6, 14, 0, 16); ctx.quadraticCurveTo(6, 14, 4, 0);
-  ctx.stroke();
-  // Trigger
-  ctx.strokeStyle = "#2ec4d6"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(0, 10); ctx.stroke();
-
-  // Grip (dark teal)
-  const gripW = 13, gripH = PISTOL_GRIP_HEIGHT;
-  ctx.save(); ctx.rotate(0.08);
-  ctx.shadowColor = "rgba(46, 196, 214, 0.35)";
-  ctx.shadowBlur = 8;
-  const gripGrad = ctx.createLinearGradient(-gripW / 2, 0, gripW / 2, 0);
-  gripGrad.addColorStop(0, "#0a3a42"); gripGrad.addColorStop(0.3, "#0f5560");
-  gripGrad.addColorStop(0.7, "#0f5560"); gripGrad.addColorStop(1, "#0a3a42");
-  ctx.fillStyle = gripGrad;
-  ctx.beginPath(); ctx.roundRect(-gripW / 2, 0, gripW, gripH, [0, 0, 4, 4]); ctx.fill();
-  // Grip texture
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = "rgba(0,60,80,0.4)"; ctx.lineWidth = 0.5;
-  for (let i = 0; i < 6; i++) {
-    const gy = 8 + i * 6;
-    ctx.beginPath(); ctx.moveTo(-gripW / 2 + 2, gy); ctx.lineTo(gripW / 2 - 2, gy); ctx.stroke();
-  }
-  ctx.restore();
 
   ctx.restore();
 
-  // Compute barrel tip in world space
+  // Compute tip (top of monster) in world space for muzzle flash
   const rot = finalAngle + Math.PI / 2;
   const tipLocalY = -barrelL - 3;
   const worldTipX = pivotX - tipLocalY * Math.sin(rot);
