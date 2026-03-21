@@ -603,7 +603,7 @@ export default function GameCanvas() {
 
       {/* Hand detection warnings */}
       {handWarning && phase === "playing" && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 rounded-lg px-6 py-3 text-white text-sm">
+        <div className="absolute bottom-28 sm:bottom-20 left-1/2 -translate-x-1/2 bg-black/70 rounded-lg px-4 sm:px-6 py-2 sm:py-3 text-white text-xs sm:text-sm max-w-[80vw] text-center z-30">
           {handWarning}
         </div>
       )}

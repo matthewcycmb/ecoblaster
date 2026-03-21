@@ -1011,8 +1011,9 @@ function drawPistol(
   const finalAngle = angle + recoilAngle;
   const barrelL = PISTOL_BARREL_LENGTH;
 
-  // Draw coral monster sprite
-  const monsterH = 120;
+  // Draw coral monster sprite — smaller on mobile
+  const isMobile = canvasWidth < 768;
+  const monsterH = isMobile ? 70 : 120;
   const monsterW = monsterH * (198 / 246); // preserve aspect ratio
 
   ctx.save();
