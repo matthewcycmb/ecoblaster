@@ -4,16 +4,39 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { submitScore } from "@/lib/supabase/leaderboard";
 
+// Timing (ms)
+const LINE_HOLD = 2000;
+const FADE_DURATION = 1500;
+const STEP_TOTAL = LINE_HOLD + FADE_DURATION;
+
+const OCEAN_FACTS = [
+  "8 million tons of plastic enter the ocean every year.",
+  "By 2050, there could be more plastic than fish in the sea.",
+  "Over 1 million marine animals die from plastic pollution annually.",
+  "Only 9% of all plastic ever produced has been recycled.",
+  "A single plastic bottle takes 450 years to decompose in the ocean.",
+  "Coral reefs support 25% of all marine species but cover less than 1% of the ocean floor.",
+  "We've lost half the world's coral reefs in the last 30 years.",
+  "Microplastics have been found in the deepest ocean trenches.",
+];
+
+type Stage = "silent" | "waves" | "real-ocean" | "fact" | "score";
+
 export default function GameOverModal({
   score,
+  wave,
   playerName,
   onPlayAgain,
 }: {
   score: number;
+  wave: number;
   playerName: string;
   onPlayAgain: () => void;
 }) {
   const [submitted, setSubmitted] = useState(false);
+  const [stage, setStage] = useState<Stage>("silent");
+  const [fadeIn, setFadeIn] = useState(false);
+  const [fact] = useState(() => OCEAN_FACTS[Math.floor(Math.random() * OCEAN_FACTS.length)]);
 
   // Auto-submit score on mount
   useEffect(() => {
@@ -24,9 +47,83 @@ export default function GameOverModal({
     }
   }, [playerName, score]);
 
+  // Cinematic sequence
+  useEffect(() => {
+    // Trigger initial fade-in on next frame
+    requestAnimationFrame(() => setFadeIn(true));
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let t = 0;
+
+    // "The reef went silent." holds for LINE_HOLD, then fades out
+    t += LINE_HOLD;
+    timers.push(setTimeout(() => setFadeIn(false), t));
+
+    // Transition to "waves" line
+    t += FADE_DURATION;
+    timers.push(setTimeout(() => { setStage("waves"); setFadeIn(true); }, t));
+
+    // Hold "waves", then fade out
+    t += LINE_HOLD;
+    timers.push(setTimeout(() => setFadeIn(false), t));
+
+    // Transition to "real-ocean" line
+    t += FADE_DURATION;
+    timers.push(setTimeout(() => { setStage("real-ocean"); setFadeIn(true); }, t));
+
+    // Hold "real-ocean", then fade out
+    t += LINE_HOLD;
+    timers.push(setTimeout(() => setFadeIn(false), t));
+
+    // Transition to ocean fact
+    t += FADE_DURATION;
+    timers.push(setTimeout(() => { setStage("fact"); setFadeIn(true); }, t));
+
+    // Hold fact, then fade out
+    t += LINE_HOLD + 500; // slightly longer hold for the fact
+    timers.push(setTimeout(() => setFadeIn(false), t));
+
+    // Transition to score screen
+    t += FADE_DURATION;
+    timers.push(setTimeout(() => { setStage("score"); setFadeIn(true); }, t));
+
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Narrative lines
+  if (stage !== "score") {
+    const text =
+      stage === "silent" ? "The reef went silent." :
+      stage === "waves" ? `You protected it for ${wave - 1} wave${wave - 1 === 1 ? "" : "s"}.` :
+      stage === "real-ocean" ? "But in the real ocean, there are no restarts." :
+      fact;
+
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
+        <p
+          className="text-white text-xl sm:text-3xl font-light tracking-wide text-center px-8 max-w-lg"
+          style={{
+            opacity: fadeIn ? 1 : 0,
+            transition: `opacity ${FADE_DURATION}ms ease-in-out`,
+            textShadow: "0 0 20px rgba(0,0,0,0.9)",
+          }}
+        >
+          {text}
+        </p>
+      </div>
+    );
+  }
+
+  // Score screen
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
-      <div className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-6 sm:p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col items-center gap-4 sm:gap-6 w-[85vw] max-w-[340px]">
+    <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
+      <div
+        className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-6 sm:p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col items-center gap-4 sm:gap-6 w-[85vw] max-w-[340px]"
+        style={{
+          opacity: fadeIn ? 1 : 0,
+          transition: `opacity ${FADE_DURATION}ms ease-in-out`,
+        }}
+      >
         <h2 className="text-2xl sm:text-3xl font-bold text-cyan-400">Reef Destroyed</h2>
         <p className="text-base sm:text-lg text-white/80">
           Trash cleaned: <span className="font-mono font-bold text-xl sm:text-2xl text-cyan-400">{score.toLocaleString()}</span>

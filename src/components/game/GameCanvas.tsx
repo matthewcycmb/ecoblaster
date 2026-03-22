@@ -12,7 +12,7 @@ import {
   findTrashInRadius,
   setHitMarginMultiplier,
 } from "@/lib/game/hitDetection";
-import { EASY_HIT_MARGIN } from "@/lib/constants";
+import { EASY_HIT_MARGIN, NORMAL_HIT_MARGIN } from "@/lib/constants";
 import { handleNetDeath } from "@/lib/game/zombies";
 import { incrementCombo } from "@/lib/game/combo";
 import { maybeDropPowerUp } from "@/lib/game/powerups";
@@ -93,6 +93,7 @@ export default function GameCanvas() {
   const [showDifficultyPrompt, setShowDifficultyPrompt] = useState(false);
   const showDifficultyPromptRef = useRef(false);
   const hasShownDifficultyPromptRef = useRef(false);
+  const hasPlayedOnceRef = useRef(false);
 
   // Load player name and difficulty on mount
   useEffect(() => {
@@ -180,6 +181,7 @@ export default function GameCanvas() {
       (newPhase) => {
         setPhase(newPhase);
         if (newPhase === "game-over") {
+          hasPlayedOnceRef.current = true;
           playGameOverStinger();
           stopBackgroundMusic();
           saveHighScore(stateRef.current.score);
@@ -483,7 +485,7 @@ export default function GameCanvas() {
   // Begin countdown (called once tracker is confirmed running)
   const beginCountdown = useCallback(() => {
     const settings = settingsRef.current;
-    setHitMarginMultiplier(settings.difficulty === "easy" ? EASY_HIT_MARGIN : 1.0);
+    setHitMarginMultiplier(settings.difficulty === "easy" ? EASY_HIT_MARGIN : NORMAL_HIT_MARGIN);
     const state = createInitialState();
     stateRef.current = state;
     setHealth(state.health);
@@ -581,7 +583,7 @@ export default function GameCanvas() {
     saveSettings(settings);
     settingsRef.current = settings;
     setDifficultyState("normal");
-    setHitMarginMultiplier(1.0);
+    setHitMarginMultiplier(NORMAL_HIT_MARGIN);
     // Resume into wave-countdown
     stateRef.current.phase = "wave-countdown";
     stateRef.current.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
@@ -685,7 +687,7 @@ export default function GameCanvas() {
             REEF DEFENDER
           </h2>
           <p className="game-subtitle text-[10px] sm:text-xs text-gray-400/70 mb-5 sm:mb-7 text-center tracking-wide">
-            Protect the reef with your hands.
+            {hasPlayedOnceRef.current ? "Protect the reef. Again." : "Protect the reef with your hands."}
           </p>
 
           <div className="flex flex-col items-center gap-1.5 sm:gap-2 mb-4 sm:mb-5 w-full max-w-64 sm:max-w-72">
@@ -769,7 +771,7 @@ export default function GameCanvas() {
 
       {/* Game over */}
       {phase === "game-over" && (
-        <GameOverModal score={score} playerName={playerName} onPlayAgain={handleRestart} />
+        <GameOverModal score={score} wave={wave} playerName={playerName} onPlayAgain={handleRestart} />
       )}
     </div>
   );

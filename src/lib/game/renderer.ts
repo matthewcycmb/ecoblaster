@@ -122,7 +122,7 @@ export function renderFrame(
     ctx.translate(shakeX, shakeY);
   }
 
-  drawBackground(ctx, canvasWidth, canvasHeight, t);
+  drawBackground(ctx, canvasWidth, canvasHeight, t, state.wave);
   loadTrashSprites();
 
   // Power-ups on ground (before zombies so they appear under)
@@ -196,13 +196,23 @@ export function renderFrame(
     ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   }
+
+  // Desaturation overlay — ocean dying as health drops below 50
+  if (state.health < 50) {
+    // 0 at 50 health → ~0.85 at 0 health
+    const desat = Math.min(0.85, (50 - state.health) / 50 * 0.85);
+    ctx.fillStyle = `rgba(128, 128, 128, ${desat})`;
+    ctx.globalCompositeOperation = "saturation";
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    ctx.globalCompositeOperation = "source-over";
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
    BACKGROUND
    ═══════════════════════════════════════════════════════════════ */
 
-function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): void {
+function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, wave: number = 1): void {
   loadBgImage();
   // Draw pixel art background image, covering the full canvas
   if (bgImage) {
@@ -296,6 +306,17 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, t: 
     ctx.fillRect(spotX - spotR, spotY - spotR, spotR * 2, spotR * 2);
   }
   ctx.restore();
+
+  // Wave-progressive murky tint — water gets polluted as waves increase
+  if (wave > 3) {
+    // Gradually shift from 0 at wave 3 to max ~0.18 by wave 20+
+    const murk = Math.min(0.18, (wave - 3) / 17 * 0.18);
+    ctx.save();
+    ctx.globalAlpha = murk;
+    ctx.fillStyle = "rgba(60, 55, 30, 1)"; // brownish-green murk
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
 }
 
 

@@ -124,9 +124,11 @@ function updatePlaying(
     state.lastSpawnTime = now;
   }
 
-  // --- Move trash (with slow-mo check) ---
+  // --- Move trash (with slow-mo check + low-health slowdown) ---
   const slowMoActive = state.activePowerUp?.type === "slow-mo";
-  moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs, slowMoActive);
+  // Fish are weakening — trash drifts slower when reef health is critical
+  const lowHealthFactor = state.health < 30 ? 0.5 : 1.0;
+  moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs * lowHealthFactor, slowMoActive);
 
   // --- Check trash reached player ---
   for (const z of state.trashItems) {

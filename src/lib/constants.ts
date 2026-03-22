@@ -22,6 +22,7 @@ export const ZOMBIE_REACH_DEPTH = 0.98; // depth at which zombie damages player
 // Hit detection
 export const TRASH_HIT_RADIUS = 50;    // base hit radius (scaled with perspective)
 export const EASY_HIT_MARGIN = 1.0;    // easy mode — no extra margin, base 1.10 is enough
+export const NORMAL_HIT_MARGIN = 1.25; // normal mode — slightly bigger hitboxes for better feel
 export const EASY_SPEED_MULT = 0.6;    // easy mode multiplies depthSpeedPerSec by this
 
 // Gameplay
