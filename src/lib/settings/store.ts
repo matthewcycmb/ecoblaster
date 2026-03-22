@@ -1,11 +1,8 @@
 import { Settings } from "@/lib/types";
-import { FLICK_THRESHOLD, DEFAULT_COOLDOWN_MS } from "@/lib/constants";
 
 const SETTINGS_KEY = "zombie-flick-settings";
 
 export const DEFAULT_SETTINGS: Settings = {
-  sensitivity: FLICK_THRESHOLD,
-  flickCooldownMs: DEFAULT_COOLDOWN_MS,
   difficulty: "easy",
   muted: false,
   playerName: "",
@@ -19,20 +16,7 @@ export function loadSettings(): Settings {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return { ...DEFAULT_SETTINGS };
 
-    // Validate each field individually to prevent tampering
     return {
-      sensitivity:
-        typeof parsed.sensitivity === "number" &&
-        parsed.sensitivity >= -0.08 &&
-        parsed.sensitivity <= -0.005
-          ? parsed.sensitivity
-          : DEFAULT_SETTINGS.sensitivity,
-      flickCooldownMs:
-        typeof parsed.flickCooldownMs === "number" &&
-        parsed.flickCooldownMs >= 50 &&
-        parsed.flickCooldownMs <= 500
-          ? parsed.flickCooldownMs
-          : DEFAULT_SETTINGS.flickCooldownMs,
       difficulty:
         parsed.difficulty === "easy" ||
         parsed.difficulty === "normal" ||

@@ -94,8 +94,6 @@ export interface GameState {
 }
 
 export interface Settings {
-  sensitivity: number;
-  flickCooldownMs: number;
   difficulty: Difficulty;
   muted: boolean;
   playerName: string;

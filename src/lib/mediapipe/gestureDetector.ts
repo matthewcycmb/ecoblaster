@@ -18,17 +18,14 @@ import {
   PINKY_PIP,
   PINKY_MCP,
   THUMB_TIP,
-  THUMB_IP,
   THUMB_MCP,
   isFingerExtended,
   isFingerCurled,
   smoothLandmarks,
-  computeVelocityY,
 } from "./landmarkUtils";
 
 export interface GestureResult {
   isFingerGun: boolean;
-  flickVelocity: number;
   indexTipX: number;
   indexTipY: number;
 }
@@ -51,8 +48,6 @@ const SCALE_FACTOR_MIN = 0.7;         // min scale (close hand)
 const SCALE_FACTOR_MAX = 2.0;         // max scale (far hand)
 
 export class GestureDetector {
-  private yHistory: number[] = [];
-  private readonly maxHistory = 7;
   private smoothedLandmarks: Landmark[] | null = null;
   private poseState = false;          // current confirmed pose state
   private poseCandidate = false;      // what the raw detection is saying
@@ -62,7 +57,7 @@ export class GestureDetector {
   update(landmarks: Landmark[]): GestureResult {
     if (!landmarks || landmarks.length < 21) {
       this.smoothedLandmarks = null;
-      return { isFingerGun: false, flickVelocity: 0, indexTipX: 0.5, indexTipY: 0.5 };
+      return { isFingerGun: false, indexTipX: 0.5, indexTipY: 0.5 };
     }
 
     // Smooth landmarks to reduce jitter
@@ -98,22 +93,16 @@ export class GestureDetector {
     );
 
     // Thumb check: thumb should be extended upward/sideways (like a real gun grip)
-    // Use relative distance: thumb tip should be away from index MCP but not too far
-    // Also accept thumb alongside index (thumb tip above wrist)
     const thumbTip = smoothed[THUMB_TIP];
     const thumbMcp = smoothed[THUMB_MCP];
     const indexMcp = smoothed[INDEX_MCP];
 
-    // Relative distance: use hand scale (wrist to index MCP distance) as reference
     const handScale = Math.sqrt(
       (indexMcp.x - wrist.x) ** 2 + (indexMcp.y - wrist.y) ** 2 + (indexMcp.z - wrist.z) ** 2
     );
     const thumbToIndexBase = Math.sqrt(
       (thumbTip.x - indexMcp.x) ** 2 + (thumbTip.y - indexMcp.y) ** 2 + (thumbTip.z - indexMcp.z) ** 2
     );
-
-    // Thumb should be within 2x hand scale of index MCP (generous — just not way off)
-    // AND thumb should be somewhat extended (thumb tip far from thumb MCP)
     const thumbExtension = Math.sqrt(
       (thumbTip.x - thumbMcp.x) ** 2 + (thumbTip.y - thumbMcp.y) ** 2 + (thumbTip.z - thumbMcp.z) ** 2
     );
@@ -124,18 +113,8 @@ export class GestureDetector {
     // Apply hysteresis to avoid flickering
     const isFingerGun = this.applyHysteresis(rawPose);
 
-    // Track Y history for flick velocity (use smoothed position relative to wrist for stability)
-    const indexTip = smoothed[INDEX_TIP];
-    // Use wrist-relative Y to cancel out hand movement vs flick
-    const relativeY = indexTip.y - wrist.y;
-    this.yHistory.push(relativeY);
-    if (this.yHistory.length > this.maxHistory) {
-      this.yHistory.shift();
-    }
-
-    const flickVelocity = computeVelocityY(this.yHistory);
-
     // Normalize aim by inverse hand size so distance from camera doesn't matter
+    const indexTip = smoothed[INDEX_TIP];
     const scaleFactor = Math.max(
       SCALE_FACTOR_MIN,
       Math.min(SCALE_FACTOR_MAX, HAND_SIZE_REF / this.smoothedHandSize2D!)
@@ -145,7 +124,6 @@ export class GestureDetector {
 
     return {
       isFingerGun,
-      flickVelocity,
       indexTipX: adjustedX,
       indexTipY: adjustedY,
     };
@@ -159,8 +137,6 @@ export class GestureDetector {
       this.poseCandidateFrames = 1;
     }
 
-    // Transition to ON requires fewer frames (responsive)
-    // Transition to OFF requires more frames (sticky — avoids flicker)
     if (rawPose && !this.poseState && this.poseCandidateFrames >= POSE_ON_FRAMES) {
       this.poseState = true;
     } else if (!rawPose && this.poseState && this.poseCandidateFrames >= POSE_OFF_FRAMES) {
@@ -170,22 +146,7 @@ export class GestureDetector {
     return this.poseState;
   }
 
-  shouldFire(
-    isFingerGun: boolean,
-    vy: number,
-    lastFireTime: number,
-    cooldownMs: number,
-    sensitivity: number
-  ): boolean {
-    return (
-      isFingerGun &&
-      vy <= sensitivity &&
-      Date.now() - lastFireTime >= cooldownMs
-    );
-  }
-
   reset(): void {
-    this.yHistory = [];
     this.smoothedLandmarks = null;
     this.smoothedHandSize2D = null;
     this.poseState = false;

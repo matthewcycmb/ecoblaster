@@ -21,15 +21,14 @@ export const ZOMBIE_REACH_DEPTH = 0.98; // depth at which zombie damages player
 
 // Hit detection
 export const TRASH_HIT_RADIUS = 50;    // base hit radius (scaled with perspective)
-export const EASY_HIT_MARGIN = 1.0;    // easy mode — no extra margin, base 1.10 is enough
-export const NORMAL_HIT_MARGIN = 1.25; // normal mode — slightly bigger hitboxes for better feel
+export const EASY_HIT_MARGIN = 1.1;    // easy mode — slightly bigger hitboxes
+export const NORMAL_HIT_MARGIN = 1.0;  // normal mode — standard hitboxes
 export const EASY_SPEED_MULT = 0.6;    // easy mode multiplies depthSpeedPerSec by this
 
 // Gameplay
 export const DAMAGE_PER_HIT = 20;
 export const INITIAL_HEALTH = 100;
-export const FLICK_THRESHOLD = -0.012;
-export const DEFAULT_COOLDOWN_MS = 250;
+export const AUTO_FIRE_INTERVAL_MS = 300;
 export const MUZZLE_FLASH_DURATION_MS = 100;
 export const WAVE_COUNTDOWN_MS = 3600;
 export const HIT_TOAST_DURATION_MS = 800;
@@ -88,8 +87,6 @@ export const PISTOL_RECOIL_DURATION_MS = 150;
 export const PISTOL_RECOIL_ANGLE = 0.15;
 export const PISTOL_RECOIL_OFFSET = 8;
 
-// Auto-fire (easy mode)
-export const EASY_AUTO_FIRE_INTERVAL_MS = 350;
 
 // Hit effects
 export const HIT_FLASH_DURATION_MS = 80;

@@ -29,7 +29,7 @@ import {
   BOSS_BONUS_MULTIPLIER,
   EXPLODER_DAMAGE_RADIUS,
   PISTOL_RECOIL_DURATION_MS,
-  EASY_AUTO_FIRE_INTERVAL_MS,
+  AUTO_FIRE_INTERVAL_MS,
   HIT_FLASH_DURATION_MS,
   SCREEN_SHAKE_DURATION_MS,
   WAVE_COUNTDOWN_MS,
@@ -123,15 +123,13 @@ export default function GameCanvas() {
       setHandWarning(null);
     }
 
-    // Auto-fire on easy mode: if finger-gun pose is active, fire automatically
+    // Auto-fire: if finger-gun pose is active, fire automatically every interval
     if (
       s.phase === "playing" &&
-      settingsRef.current.difficulty === "easy" &&
-      aimPositionRef.current &&
-      gestureDetectorRef.current
+      aimPositionRef.current
     ) {
       const now = Date.now();
-      if (now - s.lastFireTime >= EASY_AUTO_FIRE_INTERVAL_MS) {
+      if (now - s.lastFireTime >= AUTO_FIRE_INTERVAL_MS) {
         const aim = aimPositionRef.current;
         const canvas = canvasRef.current;
         if (canvas && aim) {
@@ -272,10 +270,9 @@ export default function GameCanvas() {
     if (state.phase !== "playing") return;
 
     const now = Date.now();
-    const baseCooldown = settingsRef.current.flickCooldownMs;
     const cooldown = state.activePowerUp?.type === "rapid-fire"
       ? RAPID_FIRE_COOLDOWN_MS
-      : baseCooldown;
+      : AUTO_FIRE_INTERVAL_MS;
     if (now - state.lastFireTime < cooldown) return;
 
     state.lastFireTime = now;
@@ -388,34 +385,6 @@ export default function GameCanvas() {
 
       if (result.isFingerGun) {
         lastPoseSeenRef.current = now;
-      }
-
-      const settings = settingsRef.current;
-      const state = stateRef.current;
-
-      if (
-        detector.shouldFire(
-          result.isFingerGun,
-          result.flickVelocity,
-          state.lastFireTime,
-          settings.flickCooldownMs,
-          settings.sensitivity
-        )
-      ) {
-        if (canvas && aimPositionRef.current) {
-          const cx = canvas.width / 2;
-          const cy = canvas.height / 2;
-          const dx = aimPositionRef.current.x - cx;
-          const dy = aimPositionRef.current.y - cy;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 0) {
-            handleFire(dx / len, dy / len);
-          } else {
-            handleFire(0, -1);
-          }
-        } else {
-          handleFire(0, -1);
-        }
       }
     },
     [handleFire]

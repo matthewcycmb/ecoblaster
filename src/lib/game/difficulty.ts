@@ -9,11 +9,11 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     trashTypeWeights: { bottle: 70, bag: 15, barrel: 10, net: 5, barge: 0 },
   },
   normal: {
-    initialTrash: 3,
-    depthSpeedPerSec: 0.075,  // ~13 seconds to reach player (gentler start)
-    extraPerWave: 2,
-    spawnIntervalSec: 3.5,    // slower spawn cadence early on
-    trashTypeWeights: { bottle: 70, bag: 15, barrel: 10, net: 5, barge: 0 },
+    initialTrash: 5,
+    depthSpeedPerSec: 0.12,   // ~8 seconds to reach player
+    extraPerWave: 3,
+    spawnIntervalSec: 2.5,
+    trashTypeWeights: { bottle: 45, bag: 25, barrel: 15, net: 15, barge: 0 },
   },
   hard: {
     initialTrash: 8,

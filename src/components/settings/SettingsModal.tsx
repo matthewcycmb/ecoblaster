@@ -32,61 +32,10 @@ export default function SettingsModal({
     setSettings({ ...DEFAULT_SETTINGS });
   };
 
-  const sensitivityPercent = Math.round(
-    ((settings.sensitivity - -0.06) / (-0.005 - -0.06)) * 100
-  );
-
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
       <div className="bg-[#0a1628]/95 border border-cyan-500/25 rounded-xl p-8 shadow-[0_0_40px_rgba(0,200,255,0.12)] backdrop-blur-sm flex flex-col gap-6 min-w-[340px] max-w-[420px]">
         <h2 className="text-2xl font-bold text-cyan-400">Settings</h2>
-
-        {/* Sensitivity */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-white/80">
-            Sensitivity
-          </label>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={sensitivityPercent}
-            onChange={(e) => {
-              const pct = Number(e.target.value);
-              const val = -0.06 + (pct / 100) * (-0.005 - -0.06);
-              setSettings((s) => ({ ...s, sensitivity: val }));
-            }}
-            className="w-full accent-cyan-500"
-          />
-          <p className="text-xs text-white/40">
-            Higher = easier to trigger flick. Current threshold:{" "}
-            {settings.sensitivity.toFixed(4)}
-          </p>
-        </div>
-
-        {/* Flick Cooldown */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-white/80">
-            Flick Cooldown (ms)
-          </label>
-          <input
-            type="range"
-            min={50}
-            max={500}
-            step={10}
-            value={settings.flickCooldownMs}
-            onChange={(e) =>
-              setSettings((s) => ({
-                ...s,
-                flickCooldownMs: Number(e.target.value),
-              }))
-            }
-            className="w-full accent-cyan-500"
-          />
-          <p className="text-xs text-white/40">
-            {settings.flickCooldownMs}ms between shots
-          </p>
-        </div>
 
         {/* Difficulty */}
         <div className="flex flex-col gap-2">
