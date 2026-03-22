@@ -52,6 +52,7 @@ import PauseModal from "./PauseModal";
 import GameOverModal from "./GameOverModal";
 import WaveCountdown from "./WaveCountdown";
 import TutorialOverlay from "./TutorialOverlay";
+import StoryIntro from "./StoryIntro";
 import DifficultyPrompt from "./DifficultyPrompt";
 import type { TrackerStatus, HandTrackerHandle } from "@/components/mediapipe/HandTracker";
 
@@ -87,6 +88,8 @@ export default function GameCanvas() {
   const [difficulty, setDifficultyState] = useState<Difficulty>("easy");
   const [showTutorial, setShowTutorial] = useState(false);
   const hasShownTutorialRef = useRef(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const hasShownIntroRef = useRef(false);
   const [showDifficultyPrompt, setShowDifficultyPrompt] = useState(false);
   const showDifficultyPromptRef = useRef(false);
   const hasShownDifficultyPromptRef = useRef(false);
@@ -443,7 +446,7 @@ export default function GameCanvas() {
     const settings = settingsRef.current;
     const state = stateRef.current;
     state.phase = "wave-countdown";
-    state.waveCountdownUntil = Date.now() + 800;
+    state.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
     setPhase("wave-countdown");
 
     startBackgroundMusic();
@@ -457,8 +460,19 @@ export default function GameCanvas() {
         setPhase("playing");
         playZombieGroan();
       }
-    }, 800);
+    }, WAVE_COUNTDOWN_MS);
   }, []);
+
+  // Handle intro completion — proceed to tutorial or countdown
+  const handleIntroComplete = useCallback(() => {
+    setShowIntro(false);
+    if (!hasShownTutorialRef.current) {
+      hasShownTutorialRef.current = true;
+      setShowTutorial(true);
+    } else {
+      startCountdownAndPlay();
+    }
+  }, [startCountdownAndPlay]);
 
   // Handle tutorial completion — start wave 1
   const handleTutorialComplete = useCallback(() => {
@@ -480,11 +494,11 @@ export default function GameCanvas() {
     lastPoseSeenRef.current = Date.now();
     gestureDetectorRef.current.reset();
 
-    if (!hasShownTutorialRef.current) {
-      // First time: show tutorial for 3 seconds, then start wave 1
-      hasShownTutorialRef.current = true;
-      setShowTutorial(true);
-      // handleTutorialComplete will be called by TutorialOverlay's onComplete
+    if (!hasShownIntroRef.current) {
+      // First time: show story intro, then tutorial, then start wave 1
+      hasShownIntroRef.current = true;
+      setShowIntro(true);
+      // handleIntroComplete will proceed to tutorial or countdown
     } else {
       // Subsequent games: go straight to countdown
       startCountdownAndPlay();
@@ -725,6 +739,11 @@ export default function GameCanvas() {
       {/* Wave countdown */}
       {phase === "wave-countdown" && (
         <WaveCountdown wave={wave} isSurgeWave={isSurgeWave} />
+      )}
+
+      {/* Story intro — once per session before wave 1 */}
+      {showIntro && (
+        <StoryIntro onComplete={handleIntroComplete} />
       )}
 
       {/* Tutorial overlay — once before wave 1 */}
