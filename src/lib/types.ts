@@ -37,6 +37,18 @@ export interface TrashItem {
   screenScale: number;
 }
 
+export interface SeaTurtle {
+  id: string;
+  x: number;
+  y: number;
+  depth: number;
+  screenScale: number;
+  speed: number;
+  direction: 1 | -1;
+  alive: boolean;
+  hurtAt: number;
+}
+
 export interface HitToast {
   id: string;
   x: number;
@@ -72,6 +84,7 @@ export interface GameState {
   score: number;
   wave: number;
   trashItems: TrashItem[];
+  seaTurtles: SeaTurtle[];
   hitToasts: HitToast[];
   lastFireTime: number;
   muzzleFlashUntil: number;

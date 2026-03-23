@@ -95,6 +95,19 @@ export const PISTOL_RECOIL_ANGLE = 0.15;
 export const PISTOL_RECOIL_OFFSET = 8;
 
 
+// Sea turtles
+export const TURTLE_SPAWN_CHANCE = 0.3;
+export const TURTLE_MAX_ON_SCREEN = 2;
+export const TURTLE_SPEED_MIN = 40;
+export const TURTLE_SPEED_MAX = 70;
+export const TURTLE_DEPTH_MIN = 0.3;
+export const TURTLE_DEPTH_MAX = 0.55;
+export const TURTLE_DAMAGE = 15;
+export const TURTLE_BASE_WIDTH = 80;
+export const TURTLE_BASE_HEIGHT = 60;
+export const TURTLE_HURT_DURATION_MS = 1500;
+export const TURTLE_MIN_WAVE = 3;
+
 // Hit effects
 export const HIT_FLASH_DURATION_MS = 80;
 export const SCREEN_SHAKE_DURATION_MS = 120;

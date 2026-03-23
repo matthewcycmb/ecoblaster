@@ -1,5 +1,8 @@
-import { GameState, TrashItem, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState } from "@/lib/types";
+import { GameState, TrashItem, SeaTurtle, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState } from "@/lib/types";
 import {
+  TURTLE_BASE_WIDTH,
+  TURTLE_BASE_HEIGHT,
+  TURTLE_HURT_DURATION_MS,
   HIT_TOAST_DURATION_MS,
   PIP_WIDTH,
   PIP_HEIGHT,
@@ -81,6 +84,19 @@ function loadMonsterImage(): void {
   img.onload = () => { monsterImage = img; };
 }
 
+/* ─── Turtle Sprite ─── */
+
+let turtleSprite: HTMLImageElement | null = null;
+let turtleSpriteLoading = false;
+
+function loadTurtleSprite(): void {
+  if (turtleSprite || turtleSpriteLoading || typeof window === "undefined") return;
+  turtleSpriteLoading = true;
+  const img = new window.Image();
+  img.src = "/trash/turtle.png";
+  img.onload = () => { turtleSprite = img; };
+}
+
 /* ─── Trash Sprites ─── */
 const trashSprites: Record<string, HTMLImageElement | null> = {};
 let trashSpritesLoading = false;
@@ -142,6 +158,14 @@ export function renderFrame(
 
   for (const z of sorted) {
     drawTrashItem(ctx, z, t);
+  }
+
+  // Sea turtles
+  loadTurtleSprite();
+  for (const turtle of state.seaTurtles) {
+    if (turtle.alive || turtle.hurtAt > 0) {
+      drawSeaTurtle(ctx, turtle, t);
+    }
   }
 
   // Dual pistols when both hands active, single centered pistol otherwise
@@ -397,6 +421,62 @@ function drawTrashHPBar(ctx: CanvasRenderingContext2D, z: TrashItem): void {
   ctx.fillRect(barX, barY, barWidth * fillRatio, barHeight);
   ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1;
   ctx.strokeRect(barX, barY, barWidth, barHeight);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEA TURTLE
+   ═══════════════════════════════════════════════════════════════ */
+
+function drawSeaTurtle(ctx: CanvasRenderingContext2D, turtle: SeaTurtle, t: number): void {
+  const s = turtle.screenScale;
+  const w = TURTLE_BASE_WIDTH * s;
+  const h = TURTLE_BASE_HEIGHT * s;
+
+  const bob = Math.sin(t * 2.0 + turtle.x * 0.01) * h * 0.06;
+
+  const isHurt = turtle.hurtAt > 0;
+  const hurtAge = isHurt ? Date.now() - turtle.hurtAt : 0;
+  const hurtAlpha = isHurt ? Math.max(0, 1 - hurtAge / TURTLE_HURT_DURATION_MS) : 1;
+  const hurtSink = isHurt ? hurtAge * 0.03 : 0;
+
+  ctx.save();
+  ctx.globalAlpha = hurtAlpha;
+  ctx.translate(turtle.x, turtle.y + bob + hurtSink);
+
+  if (turtle.direction === -1) {
+    ctx.scale(-1, 1);
+  }
+
+  ctx.imageSmoothingEnabled = false;
+
+  if (turtleSprite) {
+    ctx.drawImage(turtleSprite, -w / 2, -h / 2, w, h);
+  } else {
+    // Fallback: green oval with shell pattern
+    ctx.fillStyle = "#2d8a4e";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1a6b3a";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w * 0.3, h * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head
+    ctx.fillStyle = "#3aad64";
+    ctx.beginPath();
+    ctx.arc(w * 0.35, 0, h * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Red tint flash when hurt
+  if (isHurt && hurtAge < 300) {
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = `rgba(255, 60, 60, 0.5)`;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  ctx.restore();
 }
 
 /* ═══════════════════════════════════════════════════════════════

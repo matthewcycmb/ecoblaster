@@ -31,6 +31,7 @@ export function createInitialState(): GameState {
     score: 0,
     wave: 1,
     trashItems: [],
+    seaTurtles: [],
     hitToasts: [],
     lastFireTime: 0,
     muzzleFlashUntil: 0,

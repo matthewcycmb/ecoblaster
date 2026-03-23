@@ -6,6 +6,7 @@ import {
   getTrashCountForWave,
 } from "./zombies";
 import { checkPowerUpCollection } from "./powerups";
+import { moveTurtles, checkTurtleTrashCollision, maybeSpawnTurtles } from "./turtles";
 import { renderFrame } from "./renderer";
 import {
   DAMAGE_PER_HIT,
@@ -15,6 +16,7 @@ import {
   POWERUP_LIFETIME_MS,
   BOSS_WAVE_INTERVAL,
   BOSS_SPAWN_INTERVAL_MS,
+  TURTLE_DAMAGE,
 } from "@/lib/constants";
 import { playBossRoar } from "@/lib/audio/sfx";
 
@@ -164,6 +166,27 @@ function updatePlaying(
   const lowHealthFactor = state.health < 30 ? 0.5 : 1.0;
   moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs * lowHealthFactor, slowMoActive);
 
+  // --- Move sea turtles and check collisions ---
+  moveTurtles(state.seaTurtles, canvasWidth, deltaMs);
+  const turtleHits = checkTurtleTrashCollision(state.seaTurtles, state.trashItems);
+  for (const { turtle } of turtleHits) {
+    turtle.hurtAt = now;
+    state.health = Math.max(0, state.health - TURTLE_DAMAGE);
+    state.hitToasts.push({
+      id: `toast-turtle-${now}-${turtle.id}`,
+      x: turtle.x,
+      y: turtle.y - 40,
+      createdAt: now,
+      text: `Turtle hurt! -${TURTLE_DAMAGE} Health`,
+      color: "#FF9900",
+    });
+    if (state.health <= 0) {
+      state.phase = "game-over";
+      onStateChange("game-over");
+      return;
+    }
+  }
+
   // --- Check trash reached player ---
   for (const z of state.trashItems) {
     if (!z.alive) continue;
@@ -261,4 +284,7 @@ export function startWave(
     state.trashSpawned++;
   }
   state.lastSpawnTime = Date.now();
+
+  // Spawn sea turtles (after wave 2)
+  maybeSpawnTurtles(state, canvasWidth, canvasHeight);
 }
