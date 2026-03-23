@@ -228,142 +228,101 @@ export function playBossRoar(): void {
   lfo.stop(ctx.currentTime + 1.0);
 }
 
-// ─── Background Music ───
+// ─── Background Music (MP3) ───
+
+const MUSIC_TRACKS = [
+  "/audio/amusement-park-pecan-pie-main-version-27491-02-07.mp3",
+  "/audio/anomy5-phonk-phonk-music-467523.mp3",
+  "/audio/watermello-phonk-phonk-drift-496890.mp3",
+];
+
+const MUSIC_VOLUME = 0.3;
 
 let musicPlaying = false;
-let musicStopFn: (() => void) | null = null;
+let musicMutedState = false;
+let currentAudio: HTMLAudioElement | null = null;
+let lastTrackIndex = -1;
+let fadeInterval: ReturnType<typeof setInterval> | null = null;
+
+function pickNextTrack(): string {
+  let idx: number;
+  do {
+    idx = Math.floor(Math.random() * MUSIC_TRACKS.length);
+  } while (idx === lastTrackIndex && MUSIC_TRACKS.length > 1);
+  lastTrackIndex = idx;
+  return MUSIC_TRACKS[idx];
+}
+
+function playNextTrack(): void {
+  if (!musicPlaying) return;
+  const src = pickNextTrack();
+  const audio = new Audio(src);
+  audio.volume = MUSIC_VOLUME;
+  audio.muted = musicMutedState;
+  audio.onended = () => {
+    if (musicPlaying) playNextTrack();
+  };
+  currentAudio = audio;
+  audio.play().catch(() => {});
+}
 
 export function startBackgroundMusic(): void {
   if (musicPlaying) return;
-  const maybeCtx = getCtx();
-  if (!maybeCtx) return;
-  const ctx: AudioContext = maybeCtx;
-
+  // Clean up any lingering fade
+  if (fadeInterval) {
+    clearInterval(fadeInterval);
+    fadeInterval = null;
+  }
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
   musicPlaying = true;
-
-  const bpm = 130;
-  const beatDur = 60 / bpm;
-  const loopDuration = beatDur * 8; // 8 beats per loop
-
-  // Master gain for music (well below SFX)
-  const masterGain = ctx.createGain();
-  masterGain.gain.value = 0.08;
-  masterGain.connect(ctx.destination);
-
-  // Bass oscillator (continuous, note changes scheduled)
-  const bassOsc = ctx.createOscillator();
-  bassOsc.type = "sawtooth";
-  const bassFilter = ctx.createBiquadFilter();
-  bassFilter.type = "lowpass";
-  bassFilter.frequency.value = 200;
-  bassFilter.Q.value = 5;
-  const bassGain = ctx.createGain();
-  bassGain.gain.value = 0.4;
-  bassOsc.connect(bassFilter).connect(bassGain).connect(masterGain);
-
-  const bassNotes = [110, 110, 82.41, 110, 130.81, 130.81, 98, 110];
-
-  function scheduleBass(startTime: number) {
-    for (let i = 0; i < bassNotes.length; i++) {
-      const noteTime = startTime + i * beatDur;
-      bassOsc.frequency.setValueAtTime(bassNotes[i], noteTime);
-      bassGain.gain.setValueAtTime(0.4, noteTime);
-      bassGain.gain.exponentialRampToValueAtTime(0.15, noteTime + beatDur * 0.8);
-    }
-  }
-
-  function createKick(time: number) {
-    const kickOsc = ctx.createOscillator();
-    kickOsc.type = "sine";
-    kickOsc.frequency.setValueAtTime(150, time);
-    kickOsc.frequency.exponentialRampToValueAtTime(30, time + 0.1);
-    const kickGain = ctx.createGain();
-    kickGain.gain.setValueAtTime(0.5, time);
-    kickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-    kickOsc.connect(kickGain).connect(masterGain);
-    kickOsc.start(time);
-    kickOsc.stop(time + 0.15);
-  }
-
-  function createHiHat(time: number, accent: boolean) {
-    const bufferSize = Math.floor(ctx.sampleRate * 0.05);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const d = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 4);
-    }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const hhFilter = ctx.createBiquadFilter();
-    hhFilter.type = "highpass";
-    hhFilter.frequency.value = 8000;
-    const hhGain = ctx.createGain();
-    hhGain.gain.value = accent ? 0.25 : 0.12;
-    source.connect(hhFilter).connect(hhGain).connect(masterGain);
-    source.start(time);
-  }
-
-  const melodyNotes = [0, 659.25, 0, 587.33, 0, 0, 523.25, 0];
-
-  function createMelodyNote(time: number, freq: number) {
-    if (freq === 0) return;
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 4;
-    const lfoG = ctx.createGain();
-    lfoG.gain.value = 3;
-    lfo.connect(lfoG).connect(osc.frequency);
-    lfo.start(time);
-    lfo.stop(time + beatDur * 1.5);
-    const melGain = ctx.createGain();
-    melGain.gain.setValueAtTime(0, time);
-    melGain.gain.linearRampToValueAtTime(0.15, time + 0.05);
-    melGain.gain.exponentialRampToValueAtTime(0.001, time + beatDur * 1.2);
-    osc.connect(melGain).connect(masterGain);
-    osc.start(time);
-    osc.stop(time + beatDur * 1.5);
-  }
-
-  function scheduleLoop(startTime: number) {
-    scheduleBass(startTime);
-    for (let beat = 0; beat < 8; beat++) {
-      const t = startTime + beat * beatDur;
-      if (beat % 2 === 0) createKick(t);
-      createHiHat(t, beat % 2 === 1);
-      createHiHat(t + beatDur * 0.5, false);
-      createMelodyNote(t, melodyNotes[beat]);
-    }
-  }
-
-  bassOsc.start(ctx.currentTime);
-  scheduleLoop(ctx.currentTime);
-
-  let nextLoopTime = ctx.currentTime + loopDuration;
-  const scheduleInterval = setInterval(() => {
-    if (!musicPlaying) {
-      clearInterval(scheduleInterval);
-      return;
-    }
-    while (nextLoopTime < ctx.currentTime + 2) {
-      scheduleLoop(nextLoopTime);
-      nextLoopTime += loopDuration;
-    }
-  }, 200);
-
-  musicStopFn = () => {
-    musicPlaying = false;
-    clearInterval(scheduleInterval);
-    try { bassOsc.stop(); } catch { /* already stopped */ }
-    try { masterGain.disconnect(); } catch { /* ok */ }
-  };
+  playNextTrack();
 }
 
 export function stopBackgroundMusic(): void {
-  if (musicStopFn) {
-    musicStopFn();
-    musicStopFn = null;
-  }
   musicPlaying = false;
+  if (fadeInterval) {
+    clearInterval(fadeInterval);
+    fadeInterval = null;
+  }
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+}
+
+export function fadeOutBackgroundMusic(durationMs = 2000): void {
+  if (!currentAudio || !musicPlaying) {
+    stopBackgroundMusic();
+    return;
+  }
+  musicPlaying = false; // prevent onended from queuing next track
+  const audio = currentAudio;
+  const startVol = audio.volume;
+  const steps = 40;
+  const stepMs = durationMs / steps;
+  let step = 0;
+  fadeInterval = setInterval(() => {
+    step++;
+    audio.volume = Math.max(0, startVol * (1 - step / steps));
+    if (step >= steps) {
+      clearInterval(fadeInterval!);
+      fadeInterval = null;
+      audio.pause();
+      currentAudio = null;
+    }
+  }, stepMs);
+}
+
+export function setMusicMuted(m: boolean): void {
+  musicMutedState = m;
+  if (currentAudio) {
+    currentAudio.muted = m;
+  }
+}
+
+export function isMusicMuted(): boolean {
+  return musicMutedState;
 }

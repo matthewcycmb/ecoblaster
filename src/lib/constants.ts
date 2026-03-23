@@ -45,10 +45,9 @@ export const PIP_BORDER_RADIUS = 10;
 // Combo system
 export const COMBO_DECAY_MS = 2000;
 export const COMBO_TIERS = [
-  { threshold: 20, multiplier: 10 },
-  { threshold: 10, multiplier: 5 },
-  { threshold: 5, multiplier: 3 },
-  { threshold: 2, multiplier: 2 },
+  { threshold: 20, multiplier: 5 },
+  { threshold: 10, multiplier: 3 },
+  { threshold: 5, multiplier: 2 },
 ];
 export const BASE_SCORE_PER_KILL = 100;
 export const BOSS_BONUS_MULTIPLIER = 500;
@@ -71,13 +70,21 @@ export const TANK_HP = 3;
 export const EXPLODER_SIZE_MULT = 1.1;
 export const EXPLODER_DAMAGE_RADIUS = 100;
 
+// Net fragments
+export const NET_FRAGMENT_COUNT = 3;
+export const NET_FRAGMENT_SIZE_MULT = 0.5;
+export const NET_FRAGMENT_SPEED_MULT = 1.6;
+
 // Boss
 export const BOSS_SPEED_MULT = 0.4;
 export const BOSS_SIZE_MULT = 2.5;
-export const BOSS_BASE_HP = 6;
-export const BOSS_HP_PER_WAVE = 1;
+export const BOSS_BASE_HP = 15;
+export const BOSS_HP_PER_WAVE = 2;
 export const BOSS_WAVE_INTERVAL = 5;
 export const BOSS_WAVE_REGULAR_ZOMBIE_FRACTION = 0.4;
+export const BOSS_SPAWN_INTERVAL_MS = 3000;
+export const BOSS_KILL_SHAKE_MS = 400;
+export const BOSS_KILL_SHAKE_INTENSITY = 10;
 
 // Pistol
 export const PISTOL_Y_OFFSET = 0.88;

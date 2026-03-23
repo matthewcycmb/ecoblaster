@@ -51,5 +51,8 @@ export function createInitialState(): GameState {
     highScore: loadHighScore(),
     isNewHighScore: false,
     waveTransitionUntil: 0,
+    lastBargeSpawnTime: 0,
+    comboFlashUntil: 0,
+    comboResetFlashUntil: 0,
   };
 }

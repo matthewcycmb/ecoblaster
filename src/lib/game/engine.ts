@@ -14,6 +14,7 @@ import {
   COMBO_DECAY_MS,
   POWERUP_LIFETIME_MS,
   BOSS_WAVE_INTERVAL,
+  BOSS_SPAWN_INTERVAL_MS,
 } from "@/lib/constants";
 import { playBossRoar } from "@/lib/audio/sfx";
 
@@ -112,16 +113,35 @@ function updatePlaying(
     checkPowerUpCollection(state, aim.x, aim.y);
   }
 
-  // --- Spawn trash over time ---
+  // --- Spawn trash over time (batch size grows each wave) ---
   const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
+  const spawnInterval = Math.max(0.4, config.spawnIntervalSec - (state.wave - 1) * 0.12);
   if (
     state.trashSpawned < totalForWave &&
-    now - state.lastSpawnTime >= config.spawnIntervalSec * 1000
+    now - state.lastSpawnTime >= spawnInterval * 1000
   ) {
-    const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
-    state.trashItems.push(z);
-    state.trashSpawned++;
+    // Spawn multiple at once: 1 at wave 1, +1 per 2 waves (caps at 6)
+    const batchSize = Math.min(6, 1 + Math.floor(state.wave / 2));
+    const toSpawn = Math.min(batchSize, totalForWave - state.trashSpawned);
+    for (let i = 0; i < toSpawn; i++) {
+      const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
+      state.trashItems.push(z);
+      state.trashSpawned++;
+    }
     state.lastSpawnTime = now;
+  }
+
+  // --- Barge spawns smaller trash while alive ---
+  if (state.isSurgeWave && !state.surgeCleared) {
+    const barge = state.trashItems.find((z) => z.trashType === "barge" && z.alive);
+    if (barge && now - state.lastBargeSpawnTime >= BOSS_SPAWN_INTERVAL_MS) {
+      const minion = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
+      // Spawn near the barge's position
+      minion.laneX = barge.laneX + (Math.random() * 0.3 - 0.15);
+      minion.depth = barge.depth;
+      state.trashItems.push(minion);
+      state.lastBargeSpawnTime = now;
+    }
   }
 
   // --- Move trash (with slow-mo check + low-health slowdown) ---
@@ -215,11 +235,12 @@ export function startWave(
   if (state.isSurgeWave) {
     const barge = spawnTrash(canvasWidth, canvasHeight, config, "barge", state.wave);
     state.trashItems.push(barge);
+    state.lastBargeSpawnTime = Date.now();
     playBossRoar();
   }
 
-  // Spawn first batch immediately (up to 3)
-  const immediate = Math.min(state.wave === 1 ? 1 : 3, totalForWave);
+  // Spawn first batch immediately — scales with wave
+  const immediate = Math.min(state.wave === 1 ? 2 : 3 + Math.floor(state.wave / 2), totalForWave);
   for (let i = 0; i < immediate; i++) {
     const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
     state.trashItems.push(z);

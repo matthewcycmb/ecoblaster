@@ -79,12 +79,16 @@ export default function GameHUD({
   wave,
   isSurgeWave,
   onPause,
+  musicMuted,
+  onToggleMusic,
 }: {
   health: number;
   score: number;
   wave: number;
   isSurgeWave: boolean;
   onPause: () => void;
+  musicMuted: boolean;
+  onToggleMusic: () => void;
 }) {
   return (
     <>
@@ -117,6 +121,29 @@ export default function GameHUD({
           <span className="text-cyan-400 font-mono font-bold text-sm sm:text-lg">{score.toLocaleString()}</span>
         </div>
       </div>
+
+      {/* Music mute toggle — bottom right */}
+      <button
+        onClick={onToggleMusic}
+        className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors"
+        aria-label={musicMuted ? "Unmute music" : "Mute music"}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-5 sm:h-5">
+          {musicMuted ? (
+            <>
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </>
+          ) : (
+            <>
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </>
+          )}
+        </svg>
+      </button>
     </>
   );
 }

@@ -30,6 +30,7 @@ export interface TrashItem {
   maxHp: number;
   depthSpeedPerSec: number;  // depth units per second
   alive: boolean;
+  isFragment?: boolean;       // net fragment — doesn't split further
   // Computed screen-space values (updated each frame)
   x: number;
   y: number;
@@ -91,6 +92,9 @@ export interface GameState {
   highScore: number;
   isNewHighScore: boolean;
   waveTransitionUntil: number;
+  lastBargeSpawnTime: number;
+  comboFlashUntil: number;     // gold flash on combo milestone
+  comboResetFlashUntil: number; // red flash on combo break
 }
 
 export interface Settings {

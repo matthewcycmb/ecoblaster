@@ -13,7 +13,7 @@ import {
   setHitMarginMultiplier,
 } from "@/lib/game/hitDetection";
 import { EASY_HIT_MARGIN, NORMAL_HIT_MARGIN } from "@/lib/constants";
-import { handleNetDeath } from "@/lib/game/zombies";
+import { spawnNetFragments } from "@/lib/game/zombies";
 import { incrementCombo } from "@/lib/game/combo";
 import { maybeDropPowerUp } from "@/lib/game/powerups";
 import { loadSettings, saveSettings } from "@/lib/settings/store";
@@ -27,7 +27,8 @@ import {
   SHOTGUN_BLAST_RADIUS,
   BASE_SCORE_PER_KILL,
   BOSS_BONUS_MULTIPLIER,
-  EXPLODER_DAMAGE_RADIUS,
+  BOSS_KILL_SHAKE_MS,
+  BOSS_KILL_SHAKE_INTENSITY,
   PISTOL_RECOIL_DURATION_MS,
   AUTO_FIRE_INTERVAL_MS,
   HIT_FLASH_DURATION_MS,
@@ -44,6 +45,9 @@ import {
   initAudio,
   startBackgroundMusic,
   stopBackgroundMusic,
+  fadeOutBackgroundMusic,
+  setMusicMuted,
+  isMusicMuted,
 } from "@/lib/audio/sfx";
 import { GestureDetector } from "@/lib/mediapipe/gestureDetector";
 import { Landmark } from "@/lib/mediapipe/landmarkUtils";
@@ -91,6 +95,7 @@ export default function GameCanvas() {
   const [showIntro, setShowIntro] = useState(false);
   const hasShownIntroRef = useRef(false);
   const [showDifficultyPrompt, setShowDifficultyPrompt] = useState(false);
+  const [musicMuted, setMusicMutedState] = useState(false);
   const showDifficultyPromptRef = useRef(false);
   const hasShownDifficultyPromptRef = useRef(false);
   const hasPlayedOnceRef = useRef(false);
@@ -181,7 +186,7 @@ export default function GameCanvas() {
         if (newPhase === "game-over") {
           hasPlayedOnceRef.current = true;
           playGameOverStinger();
-          stopBackgroundMusic();
+          fadeOutBackgroundMusic(2000);
           saveHighScore(stateRef.current.score);
         }
         if (newPhase === "wave-countdown") {
@@ -228,6 +233,7 @@ export default function GameCanvas() {
     const { newMultiplier, milestoneReached } = incrementCombo(state.combo);
     if (milestoneReached) {
       playComboChime(newMultiplier);
+      state.comboFlashUntil = now + 300;
     }
 
     const killScore = BASE_SCORE_PER_KILL * state.combo.multiplier;
@@ -235,8 +241,18 @@ export default function GameCanvas() {
     state.lastScoreChangeTime = now;
 
     if (z.trashType === "barge") {
+      // Boss kill: big bonus, clear all trash, heavy screen shake
       state.score += BOSS_BONUS_MULTIPLIER * state.wave;
       state.surgeCleared = true;
+      state.screenShakeUntil = now + BOSS_KILL_SHAKE_MS;
+      for (const t of state.trashItems) {
+        if (t.alive && t.id !== z.id) {
+          t.alive = false;
+          state.trashRemainingInWave--;
+          totalKills++;
+        }
+      }
+      playExplosion();
     }
 
     maybeDropPowerUp(state, z.x, z.y, z.id, settingsRef.current.difficulty);
@@ -253,11 +269,15 @@ export default function GameCanvas() {
       color: state.combo.multiplier >= 5 ? "#FFD166" : "#0B63FF",
     });
 
-    if (z.trashType === "net") {
+    // Net splitting: spawn fragments instead of chain-killing
+    if (z.trashType === "net" && !z.isFragment) {
       playExplosion();
-      const chainKilled = handleNetDeath(z, state.trashItems, EXPLODER_DAMAGE_RADIUS);
-      for (const ck of chainKilled) {
-        totalKills += processKill(state, ck, now);
+      const canvas = canvasRef.current!;
+      const config = DIFFICULTY_CONFIGS[settingsRef.current.difficulty];
+      const fragments = spawnNetFragments(z, canvas.width, canvas.height, config);
+      for (const frag of fragments) {
+        state.trashItems.push(frag);
+        state.trashRemainingInWave++;
       }
     }
 
@@ -347,6 +367,13 @@ export default function GameCanvas() {
         processKill(state, hit, now);
       }
       playHit();
+    } else {
+      // Miss — reset combo with red flash
+      if (state.combo.count > 0) {
+        state.combo.count = 0;
+        state.combo.multiplier = 1;
+        state.comboResetFlashUntil = now + 200;
+      }
     }
   }, [processKill]);
 
@@ -598,6 +625,12 @@ export default function GameCanvas() {
           onPause={() => {
             stateRef.current.phase = "paused";
             setPhase("paused");
+          }}
+          musicMuted={musicMuted}
+          onToggleMusic={() => {
+            const next = !musicMuted;
+            setMusicMutedState(next);
+            setMusicMuted(next);
           }}
         />
       )}

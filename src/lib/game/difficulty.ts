@@ -2,18 +2,18 @@ import { Difficulty, DifficultyConfig, TrashType } from "@/lib/types";
 
 export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   easy: {
-    initialTrash: 5,
-    depthSpeedPerSec: 0.07,
+    initialTrash: 3,
+    depthSpeedPerSec: 0.06,   // ~16 seconds to reach player
     extraPerWave: 2,
-    spawnIntervalSec: 2,
-    trashTypeWeights: { bottle: 70, bag: 15, barrel: 10, net: 5, barge: 0 },
+    spawnIntervalSec: 2.5,
+    trashTypeWeights: { bottle: 70, bag: 18, barrel: 8, net: 4, barge: 0 },
   },
   normal: {
-    initialTrash: 5,
+    initialTrash: 6,
     depthSpeedPerSec: 0.12,   // ~8 seconds to reach player
     extraPerWave: 3,
-    spawnIntervalSec: 2.5,
-    trashTypeWeights: { bottle: 45, bag: 25, barrel: 15, net: 15, barge: 0 },
+    spawnIntervalSec: 2.0,
+    trashTypeWeights: { bottle: 40, bag: 25, barrel: 18, net: 17, barge: 0 },
   },
   hard: {
     initialTrash: 8,

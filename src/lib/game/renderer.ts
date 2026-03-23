@@ -197,6 +197,14 @@ export function renderFrame(
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   }
 
+  // Gold flash on combo milestone
+  if (now < state.comboFlashUntil) {
+    const flashAlpha = 0.2 * ((state.comboFlashUntil - now) / 300);
+    ctx.fillStyle = `rgba(255, 209, 102, ${flashAlpha})`;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  }
+
+
   // Desaturation overlay — ocean dying as health drops below 50
   if (state.health < 50) {
     // 0 at 50 health → ~0.85 at 0 health
@@ -377,24 +385,43 @@ function drawTrashHPBar(ctx: CanvasRenderingContext2D, z: TrashItem): void {
    ═══════════════════════════════════════════════════════════════ */
 
 function drawBossHPBar(ctx: CanvasRenderingContext2D, boss: TrashItem, canvasWidth: number): void {
-  const barWidth = canvasWidth * 0.5;
-  const barHeight = 14;
+  const barWidth = canvasWidth * 0.65;
+  const barHeight = 20;
   const barX = (canvasWidth - barWidth) / 2;
-  const barY = 50;
+  const barY = 44;
   const fillRatio = boss.hp / boss.maxHp;
+  const t = Date.now() / 1000;
 
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.7)";
-  ctx.beginPath(); ctx.roundRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4, 4); ctx.fill();
 
+  // Pulsing glow behind bar
+  const glowAlpha = 0.15 + 0.1 * Math.sin(t * 3);
+  ctx.shadowColor = "#FF3333";
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = `rgba(0,0,0,${0.8 + glowAlpha * 0.2})`;
+  ctx.beginPath(); ctx.roundRect(barX - 4, barY - 4, barWidth + 8, barHeight + 8, 6); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // HP fill with animated gradient
   const hpGrad = ctx.createLinearGradient(barX, barY, barX + barWidth * fillRatio, barY);
-  hpGrad.addColorStop(0, "#FF3333"); hpGrad.addColorStop(1, "#FF6600");
+  hpGrad.addColorStop(0, "#FF2222");
+  hpGrad.addColorStop(0.5, "#FF6600");
+  hpGrad.addColorStop(1, "#FFAA00");
   ctx.fillStyle = hpGrad;
-  ctx.beginPath(); ctx.roundRect(barX, barY, barWidth * fillRatio, barHeight, 3); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(barX, barY, barWidth * fillRatio, barHeight, 4); ctx.fill();
 
-  ctx.font = "bold 11px Inter, system-ui, sans-serif";
+  // Border
+  ctx.strokeStyle = "rgba(255, 100, 100, 0.6)";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(barX, barY, barWidth, barHeight, 4); ctx.stroke();
+
+  // Label
+  ctx.font = "bold 14px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#FFFFFF"; ctx.textAlign = "center";
-  ctx.fillText(`BOSS  ${boss.hp}/${boss.maxHp}`, canvasWidth / 2, barY + barHeight + 14);
+  ctx.strokeStyle = "rgba(0,0,0,0.8)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+  const label = `TRASH BARGE  ${boss.hp}/${boss.maxHp}`;
+  ctx.strokeText(label, canvasWidth / 2, barY + barHeight + 18);
+  ctx.fillText(label, canvasWidth / 2, barY + barHeight + 18);
   ctx.restore();
 }
 
@@ -408,16 +435,27 @@ function drawComboDisplay(ctx: CanvasRenderingContext2D, combo: ComboState, canv
   const x = canvasWidth / 2;
   const y = canvasHeight * 0.15;
   const pulse = 1 + Math.sin(Date.now() / 100) * 0.05 * combo.multiplier;
+  // Scale the combo number size with hit count — grows satisfyingly
+  const countScale = Math.min(2.0, 1.0 + combo.count * 0.03);
+  const fontSize = Math.round(36 * countScale);
 
   ctx.save();
   ctx.translate(x, y); ctx.scale(pulse, pulse);
-  ctx.font = "bold 36px Inter, system-ui, sans-serif"; ctx.textAlign = "center";
+
+  // Glow behind combo at higher multipliers
+  if (combo.multiplier >= 3) {
+    ctx.shadowColor = combo.multiplier >= 5 ? "#FFD166" : "#FF9900";
+    ctx.shadowBlur = 15 + combo.multiplier * 3;
+  }
+
+  ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`; ctx.textAlign = "center";
   ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 4; ctx.lineJoin = "round";
   ctx.strokeText(text, 0, 0);
-  ctx.fillStyle = combo.multiplier >= 10 ? "#FF3333" : combo.multiplier >= 5 ? "#FF9900" : combo.multiplier >= 3 ? "#FFD166" : "#FFFFFF";
+  ctx.fillStyle = combo.multiplier >= 5 ? "#FF9900" : combo.multiplier >= 3 ? "#FFD166" : "#FFFFFF";
   ctx.fillText(text, 0, 0);
+  ctx.shadowBlur = 0;
   ctx.font = "bold 14px Inter, system-ui, sans-serif";
-  ctx.strokeText(subText, 0, 22); ctx.fillStyle = "#FFFFFF"; ctx.fillText(subText, 0, 22);
+  ctx.strokeText(subText, 0, 26); ctx.fillStyle = "#FFFFFF"; ctx.fillText(subText, 0, 26);
   ctx.restore();
 }
 

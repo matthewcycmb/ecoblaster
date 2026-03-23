@@ -19,6 +19,9 @@ import {
   BOSS_HP_PER_WAVE,
   BOSS_WAVE_INTERVAL,
   BOSS_WAVE_REGULAR_ZOMBIE_FRACTION,
+  NET_FRAGMENT_COUNT,
+  NET_FRAGMENT_SIZE_MULT,
+  NET_FRAGMENT_SPEED_MULT,
 } from "@/lib/constants";
 import { pickTrashType } from "./difficulty";
 
@@ -32,11 +35,10 @@ export function getTrashCountForWave(
   config: DifficultyConfig,
   isSurgeWave: boolean = false
 ): number {
-  // Base count: initial + per-wave increase
+  // Accelerating growth: linear base + quadratic ramp so later waves flood the screen
   const base = config.initialTrash + (wave - 1) * config.extraPerWave;
-  // Add 1 extra trash every 5 waves for escalating difficulty
-  const waveBonus = Math.floor(wave / 5);
-  const total = base + waveBonus;
+  const quadraticBonus = Math.floor(0.3 * wave * wave);
+  const total = base + quadraticBonus;
 
   if (isSurgeWave) {
     return Math.max(2, Math.floor(total * BOSS_WAVE_REGULAR_ZOMBIE_FRACTION));
@@ -66,7 +68,9 @@ export function spawnTrash(
   let width = ZOMBIE_BASE_WIDTH;
   let height = ZOMBIE_BASE_HEIGHT;
   let hp = 1;
-  let speed = config.depthSpeedPerSec * speedVariation;
+  // Trash gets 8% faster each wave (compounding)
+  const waveSpeedMult = 1 + (wave ? (wave - 1) * 0.08 : 0);
+  let speed = config.depthSpeedPerSec * speedVariation * waveSpeedMult;
 
   switch (trashType) {
     case "bag":
@@ -164,27 +168,37 @@ export function checkTrashReachedPlayer(z: TrashItem): boolean {
 }
 
 /**
- * Handle net death: damages nearby trash items in radius.
- * Returns list of trash items killed by the explosion.
+ * Spawn net fragments when a net is destroyed.
+ * Fragments scatter in different directions, are smaller and faster.
  */
-export function handleNetDeath(
-  exploder: TrashItem,
-  allTrash: TrashItem[],
-  explosionRadius: number
+export function spawnNetFragments(
+  parent: TrashItem,
+  canvasWidth: number,
+  canvasHeight: number,
+  config: DifficultyConfig
 ): TrashItem[] {
-  const killed: TrashItem[] = [];
-  for (const z of allTrash) {
-    if (!z.alive || z.id === exploder.id) continue;
-    const dx = z.x - exploder.x;
-    const dy = z.y - exploder.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist <= explosionRadius * exploder.screenScale) {
-      z.hp -= 2;
-      if (z.hp <= 0) {
-        z.alive = false;
-        killed.push(z);
-      }
-    }
+  const fragments: TrashItem[] = [];
+  const offsets = [-0.15, 0, 0.15]; // lane offsets for scatter
+
+  for (let i = 0; i < NET_FRAGMENT_COUNT; i++) {
+    const z: TrashItem = {
+      id: genId(),
+      trashType: "net",
+      laneX: parent.laneX + offsets[i],
+      depth: parent.depth,
+      width: ZOMBIE_BASE_WIDTH * EXPLODER_SIZE_MULT * NET_FRAGMENT_SIZE_MULT,
+      height: ZOMBIE_BASE_HEIGHT * EXPLODER_SIZE_MULT * NET_FRAGMENT_SIZE_MULT,
+      hp: 1,
+      maxHp: 1,
+      depthSpeedPerSec: config.depthSpeedPerSec * NET_FRAGMENT_SPEED_MULT,
+      alive: true,
+      isFragment: true,
+      x: 0,
+      y: 0,
+      screenScale: MIN_SCALE,
+    };
+    updateTrashScreenPos(z, canvasWidth, canvasHeight);
+    fragments.push(z);
   }
-  return killed;
+  return fragments;
 }
