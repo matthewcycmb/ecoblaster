@@ -180,3 +180,10 @@ html, body {
   0%, 100% { opacity: 0.3; transform: rotate(12deg) translateY(0); }
   50% { opacity: 0.6; transform: rotate(12deg) translateY(-20px); }
 }
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -10px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -10px); }
+}

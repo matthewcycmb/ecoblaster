@@ -35,10 +35,9 @@ export function getTrashCountForWave(
   config: DifficultyConfig,
   isSurgeWave: boolean = false
 ): number {
-  // Accelerating growth: linear base + quadratic ramp so later waves flood the screen
+  // Gentle growth: linear base only, no quadratic spike
   const base = config.initialTrash + (wave - 1) * config.extraPerWave;
-  const quadraticBonus = Math.floor(0.12 * wave * wave);
-  const total = base + quadraticBonus;
+  const total = base;
 
   if (isSurgeWave) {
     return Math.max(2, Math.floor(total * BOSS_WAVE_REGULAR_ZOMBIE_FRACTION));

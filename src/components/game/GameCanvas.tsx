@@ -100,6 +100,8 @@ export default function GameCanvas() {
   const [difficulty, setDifficultyState] = useState<Difficulty>("easy");
   const [showTutorial, setShowTutorial] = useState(false);
   const hasShownTutorialRef = useRef(false);
+  const [showDualGunHint, setShowDualGunHint] = useState(false);
+  const hasShownDualGunHintRef = useRef(false);
   const [showIntro, setShowIntro] = useState(false);
   const hasShownIntroRef = useRef(false);
   const [showDifficultyPrompt, setShowDifficultyPrompt] = useState(false);
@@ -202,6 +204,12 @@ export default function GameCanvas() {
         }
         if (newPhase === "wave-countdown") {
           playZombieGroan();
+          // After wave 2: show dual-gun hint (once per session)
+          if (stateRef.current.wave === 3 && !hasShownDualGunHintRef.current) {
+            hasShownDualGunHintRef.current = true;
+            setShowDualGunHint(true);
+            setTimeout(() => setShowDualGunHint(false), 4000);
+          }
           // After wave 5: prompt difficulty upgrade (once per session, easy only)
           if (
             stateRef.current.wave === 6 &&
@@ -412,20 +420,22 @@ export default function GameCanvas() {
       if (hands.length === 0) return;
       lastHandSeenRef.current = now;
 
-      // FPS-based auto-detect: if FPS drops too low, fall back to single hand
+      // FPS-based auto-detect: drop to single hand if truly struggling
       if (lastFrameTimeRef.current > 0) {
         const delta = now - lastFrameTimeRef.current;
         if (delta > 0) {
           const fps = 1000 / delta;
           const history = fpsHistoryRef.current;
           history.push(fps);
-          if (history.length > 60) history.shift();
-          if (history.length >= 60 && activeHandCountRef.current === 2) {
+          if (history.length > 120) history.shift();
+          if (history.length >= 120) {
             const avgFps = history.reduce((a, b) => a + b, 0) / history.length;
-            if (avgFps < 18) {
+            if (avgFps < 10 && activeHandCountRef.current === 2) {
               activeHandCountRef.current = 1;
               aimPositionsRef.current[1] = null;
               gestureDetectorsRef.current[1].reset();
+            } else if (avgFps >= 14 && activeHandCountRef.current === 1) {
+              activeHandCountRef.current = 2;
             }
           }
         }
@@ -708,6 +718,30 @@ export default function GameCanvas() {
             setMusicMuted(next);
           }}
         />
+      )}
+
+      {/* Dual-gun hint */}
+      {showDualGunHint && (
+        <div
+          className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+          style={{
+            animation: "fadeInOut 4s ease-in-out forwards",
+          }}
+        >
+          <div className="bg-black/70 backdrop-blur-sm border border-cyan-500/30 rounded-xl px-5 sm:px-6 py-3 sm:py-4 flex items-center gap-3 shadow-[0_0_20px_rgba(0,200,255,0.15)]">
+            <span className="text-2xl sm:text-3xl" style={{ filter: "drop-shadow(0 0 8px rgba(0,200,255,0.4))" }}>
+              👉👉
+            </span>
+            <div>
+              <p className="text-white font-bold text-xs sm:text-sm tracking-wide">
+                Use both hands for dual guns!
+              </p>
+              <p className="text-cyan-300/70 text-[10px] sm:text-xs mt-0.5">
+                Double the firepower with two finger guns
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Hand detection warnings */}

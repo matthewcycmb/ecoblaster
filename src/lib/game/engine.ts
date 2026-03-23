@@ -129,13 +129,13 @@ function updatePlaying(
 
   // --- Spawn trash over time (batch size grows each wave) ---
   const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
-  const spawnInterval = Math.max(0.4, config.spawnIntervalSec - (state.wave - 1) * 0.12);
+  const spawnInterval = Math.max(1.0, config.spawnIntervalSec - (state.wave - 1) * 0.08);
   if (
     state.trashSpawned < totalForWave &&
     now - state.lastSpawnTime >= spawnInterval * 1000
   ) {
-    // Spawn multiple at once: 1 at wave 1, +1 per 2 waves (caps at 6)
-    const batchSize = Math.min(6, 1 + Math.floor(state.wave / 2));
+    // Spawn multiple at once: 1 at wave 1, +1 per 3 waves (caps at 4)
+    const batchSize = Math.min(4, 1 + Math.floor(state.wave / 3));
     const toSpawn = Math.min(batchSize, totalForWave - state.trashSpawned);
     for (let i = 0; i < toSpawn; i++) {
       const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
