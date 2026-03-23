@@ -1,4 +1,4 @@
-import { GameState, TrashItem, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType } from "@/lib/types";
+import { GameState, TrashItem, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState } from "@/lib/types";
 import {
   HIT_TOAST_DURATION_MS,
   PIP_WIDTH,
@@ -105,9 +105,13 @@ export function renderFrame(
   canvasHeight: number,
   videoElement?: HTMLVideoElement | null,
   aimX?: number,
-  aimY?: number
+  aimY?: number,
+  secondAimX?: number,
+  secondAimY?: number,
+  handGunStates?: HandGunState[]
 ): void {
   const hasAim = aimX !== undefined && aimY !== undefined;
+  const hasSecondAim = secondAimX !== undefined && secondAimY !== undefined;
   const cx = hasAim ? aimX : canvasWidth / 2;
   const cy = hasAim ? aimY : canvasHeight / 2;
   const now = Date.now();
@@ -140,17 +144,32 @@ export function renderFrame(
     drawTrashItem(ctx, z, t);
   }
 
-  // Pistol at bottom (draw before crosshair)
-  const pistolResult = drawPistol(ctx, canvasWidth, canvasHeight, state, cx, cy, hasAim);
-
-  if (hasAim || state.phase !== "playing") {
+  // Dual pistols when both hands active, single centered pistol otherwise
+  if (hasAim && hasSecondAim) {
+    // Two pistols — left and right
+    const gs0 = handGunStates?.[0];
+    const gs1 = handGunStates?.[1];
+    const pistol0 = drawPistol(ctx, canvasWidth, canvasHeight, state, cx, cy, true, canvasWidth * 0.25, gs0);
+    const pistol1 = drawPistol(ctx, canvasWidth, canvasHeight, state, secondAimX, secondAimY, true, canvasWidth * 0.75, gs1, true);
     drawCrosshair(ctx, cx, cy, t);
-  }
-
-  // Muzzle flash at barrel tip
-  if (now < state.muzzleFlashUntil) {
-    const flashProgress = (state.muzzleFlashUntil - now) / 100;
-    drawMuzzleFlash(ctx, pistolResult.barrelTipX, pistolResult.barrelTipY, flashProgress);
+    drawCrosshair(ctx, secondAimX, secondAimY, t, "rgba(80, 200, 255, 0.9)");
+    // Muzzle flashes per hand
+    if (gs0 && now < gs0.muzzleFlashUntil) {
+      drawMuzzleFlash(ctx, pistol0.barrelTipX, pistol0.barrelTipY, (gs0.muzzleFlashUntil - now) / 100);
+    }
+    if (gs1 && now < gs1.muzzleFlashUntil) {
+      drawMuzzleFlash(ctx, pistol1.barrelTipX, pistol1.barrelTipY, (gs1.muzzleFlashUntil - now) / 100);
+    }
+  } else {
+    // Single pistol centered
+    const pistolResult = drawPistol(ctx, canvasWidth, canvasHeight, state, cx, cy, hasAim);
+    if (hasAim || state.phase !== "playing") {
+      drawCrosshair(ctx, cx, cy, t);
+    }
+    if (now < state.muzzleFlashUntil) {
+      const flashProgress = (state.muzzleFlashUntil - now) / 100;
+      drawMuzzleFlash(ctx, pistolResult.barrelTipX, pistolResult.barrelTipY, flashProgress);
+    }
   }
 
   for (const toast of state.hitToasts) {
@@ -507,7 +526,7 @@ function drawActivePowerUpIndicator(ctx: CanvasRenderingContext2D, active: Activ
    CROSSHAIR
    ═══════════════════════════════════════════════════════════════ */
 
-function drawCrosshair(ctx: CanvasRenderingContext2D, cx: number, cy: number, t: number): void {
+function drawCrosshair(ctx: CanvasRenderingContext2D, cx: number, cy: number, t: number, centerColor?: string): void {
   const size = 24;
   const rotation = t * 0.4;
   ctx.save(); ctx.translate(cx, cy);
@@ -528,7 +547,7 @@ function drawCrosshair(ctx: CanvasRenderingContext2D, cx: number, cy: number, t:
     const dx = Math.cos(angle) * size, dy = Math.sin(angle) * size;
     ctx.beginPath(); ctx.moveTo(dx, dy - 2.5); ctx.lineTo(dx + 2.5, dy); ctx.lineTo(dx, dy + 2.5); ctx.lineTo(dx - 2.5, dy); ctx.closePath(); ctx.fill();
   }
-  ctx.fillStyle = "rgba(255, 80, 80, 0.9)";
+  ctx.fillStyle = centerColor ?? "rgba(255, 80, 80, 0.9)";
   ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
@@ -654,11 +673,14 @@ function drawPistol(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number, canvasHeight: number,
   state: GameState,
-  aimX: number, aimY: number, hasAim: boolean
+  aimX: number, aimY: number, hasAim: boolean,
+  pivotXOverride?: number,
+  handGunState?: HandGunState,
+  flipX?: boolean
 ): PistolRenderResult {
   loadMonsterImage();
 
-  const pivotX = canvasWidth / 2;
+  const pivotX = pivotXOverride ?? canvasWidth / 2;
   const pivotY = canvasHeight * PISTOL_Y_OFFSET;
 
   // Angle toward aim, default straight up
@@ -668,11 +690,12 @@ function drawPistol(
     angle = Math.max(-Math.PI + 0.1, Math.min(-0.1, angle));
   }
 
-  // Recoil animation
+  // Recoil animation — use per-hand state if provided
   const now = Date.now();
   let recoilProgress = 0;
-  if (now < state.recoilUntil) {
-    const elapsed = PISTOL_RECOIL_DURATION_MS - (state.recoilUntil - now);
+  const recoilUntil = handGunState?.recoilUntil ?? state.recoilUntil;
+  if (now < recoilUntil) {
+    const elapsed = PISTOL_RECOIL_DURATION_MS - (recoilUntil - now);
     const t = elapsed / PISTOL_RECOIL_DURATION_MS;
     recoilProgress = t < 0.3 ? t / 0.3 : 1 - (t - 0.3) / 0.7;
   }
@@ -691,6 +714,7 @@ function drawPistol(
   ctx.imageSmoothingEnabled = false; // pixel art crisp
   ctx.translate(pivotX, pivotY + recoilOff);
   ctx.rotate(finalAngle + Math.PI / 2);
+  if (flipX) ctx.scale(-1, 1);
 
   if (monsterImage) {
     // Draw centered horizontally, extending upward from pivot

@@ -57,7 +57,7 @@ export const POWERUP_DROP_CHANCE = 0.20;
 export const POWERUP_LIFETIME_MS = 5000;
 export const POWERUP_COLLECT_RADIUS = 60;
 export const POWERUP_DURATION_MS = 8000;
-export const RAPID_FIRE_COOLDOWN_MS = 50;
+export const RAPID_FIRE_COOLDOWN_MS = 120;
 export const SHOTGUN_BLAST_RADIUS = 120;
 export const HEALTH_PACK_AMOUNT = 30;
 

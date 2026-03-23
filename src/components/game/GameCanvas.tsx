@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { GameState, GamePhase, Settings, Difficulty } from "@/lib/types";
+import { GameState, GamePhase, Settings, Difficulty, HandGunState } from "@/lib/types";
 import { createInitialState, saveHighScore } from "@/lib/game/state";
 import { createGameEngine, startWave, GameEngine } from "@/lib/game/engine";
 import { DIFFICULTY_CONFIGS } from "@/lib/game/difficulty";
@@ -70,14 +70,22 @@ export default function GameCanvas() {
   const stateRef = useRef<GameState>(createInitialState());
   const engineRef = useRef<GameEngine | null>(null);
   const settingsRef = useRef<Settings>(loadSettings());
-  const gestureDetectorRef = useRef(new GestureDetector());
+  const gestureDetectorsRef = useRef([new GestureDetector(), new GestureDetector()]);
   const lastHandSeenRef = useRef(0);
   const lastPoseSeenRef = useRef(0);
   const handTrackerRef = useRef<HandTrackerHandle | null>(null);
   const aimPositionRef = useRef<{ x: number; y: number } | null>(null);
   const aimTargetRef = useRef<{ x: number; y: number } | null>(null);
+  const aimPositionsRef = useRef<({ x: number; y: number } | null)[]>([null, null]);
+  const handGunStatesRef = useRef<HandGunState[]>([
+    { lastFireTime: 0, muzzleFlashUntil: 0, recoilUntil: 0 },
+    { lastFireTime: 0, muzzleFlashUntil: 0, recoilUntil: 0 },
+  ]);
+  const activeHandCountRef = useRef(2);
+  const fpsHistoryRef = useRef<number[]>([]);
+  const lastFrameTimeRef = useRef(0);
   const pendingStartRef = useRef(false);
-  const handleFireRef = useRef<(dirX?: number, dirY?: number) => void>(() => {});
+  const handleFireRef = useRef<(dirX?: number, dirY?: number, handIndex?: number) => void>(() => {});
 
   const [phase, setPhase] = useState<GamePhase>("idle");
   const [health, setHealth] = useState(100);
@@ -128,23 +136,26 @@ export default function GameCanvas() {
       setHandWarning(null);
     }
 
-    // Auto-fire: if finger-gun pose is active, fire automatically every interval
-    if (
-      s.phase === "playing" &&
-      aimPositionRef.current
-    ) {
+    // Auto-fire: each hand fires independently
+    if (s.phase === "playing") {
       const now = Date.now();
-      if (now - s.lastFireTime >= AUTO_FIRE_INTERVAL_MS) {
-        const aim = aimPositionRef.current;
-        const canvas = canvasRef.current;
-        if (canvas && aim) {
-          const cx = canvas.width / 2;
-          const cy = canvas.height / 2;
-          const dx = aim.x - cx;
-          const dy = aim.y - cy;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 0) {
-            handleFireRef.current(dx / len, dy / len);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        for (let i = 0; i < activeHandCountRef.current; i++) {
+          const aim = aimPositionsRef.current[i];
+          const handGun = handGunStatesRef.current[i];
+          if (!aim) continue;
+          const cooldown = s.activePowerUp?.type === "rapid-fire"
+            ? RAPID_FIRE_COOLDOWN_MS : AUTO_FIRE_INTERVAL_MS;
+          if (now - handGun.lastFireTime >= cooldown) {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const dx = aim.x - cx;
+            const dy = aim.y - cy;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 0) {
+              handleFireRef.current(dx / len, dy / len, i);
+            }
           }
         }
       }
@@ -207,7 +218,9 @@ export default function GameCanvas() {
       },
       () => DIFFICULTY_CONFIGS[settingsRef.current.difficulty],
       () => handTrackerRef.current?.getVideo() ?? null,
-      () => aimPositionRef.current
+      () => aimPositionRef.current,
+      () => aimPositionsRef.current.filter(Boolean) as { x: number; y: number }[],
+      () => handGunStatesRef.current
     );
 
     engineRef.current = engine;
@@ -284,17 +297,25 @@ export default function GameCanvas() {
     return totalKills;
   }, []);
 
-  // Handle fire
-  const handleFire = useCallback((dirX?: number, dirY?: number) => {
+  // Handle fire — handIndex selects which hand's state to update
+  const handleFire = useCallback((dirX?: number, dirY?: number, handIndex?: number) => {
     const state = stateRef.current;
     if (state.phase !== "playing") return;
 
     const now = Date.now();
+    const hi = handIndex ?? 0;
+    const handGun = handGunStatesRef.current[hi];
     const cooldown = state.activePowerUp?.type === "rapid-fire"
       ? RAPID_FIRE_COOLDOWN_MS
       : AUTO_FIRE_INTERVAL_MS;
-    if (now - state.lastFireTime < cooldown) return;
+    if (now - handGun.lastFireTime < cooldown) return;
 
+    // Update per-hand state
+    handGun.lastFireTime = now;
+    handGun.muzzleFlashUntil = now + MUZZLE_FLASH_DURATION_MS;
+    handGun.recoilUntil = now + PISTOL_RECOIL_DURATION_MS;
+
+    // Also update shared state for screen effects
     state.lastFireTime = now;
     state.muzzleFlashUntil = now + MUZZLE_FLASH_DURATION_MS;
     state.recoilUntil = now + PISTOL_RECOIL_DURATION_MS;
@@ -302,7 +323,7 @@ export default function GameCanvas() {
     playGunshot();
 
     const canvas = canvasRef.current!;
-    const aim = aimPositionRef.current;
+    const aim = aimPositionsRef.current[hi] ?? aimPositionRef.current;
 
     let targetX: number;
     let targetY: number;
@@ -382,36 +403,85 @@ export default function GameCanvas() {
   const IS_MOBILE = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const AIM_LERP_SPEED = IS_MOBILE ? 0.55 : 0.35;
 
-  // MediaPipe frame callback
+  // MediaPipe frame callback — processes up to 2 hands
   const handleFrame = useCallback(
-    (landmarks: Landmark[] | null) => {
+    (hands: (Landmark[] | null)[]) => {
       const now = Date.now();
       const canvas = canvasRef.current;
 
-      if (!landmarks) return;
+      if (hands.length === 0) return;
       lastHandSeenRef.current = now;
 
-      const detector = gestureDetectorRef.current;
-      const result = detector.update(landmarks);
+      // FPS-based auto-detect: if FPS drops too low, fall back to single hand
+      if (lastFrameTimeRef.current > 0) {
+        const delta = now - lastFrameTimeRef.current;
+        if (delta > 0) {
+          const fps = 1000 / delta;
+          const history = fpsHistoryRef.current;
+          history.push(fps);
+          if (history.length > 60) history.shift();
+          if (history.length >= 60 && activeHandCountRef.current === 2) {
+            const avgFps = history.reduce((a, b) => a + b, 0) / history.length;
+            if (avgFps < 18) {
+              activeHandCountRef.current = 1;
+              aimPositionsRef.current[1] = null;
+              gestureDetectorsRef.current[1].reset();
+            }
+          }
+        }
+      }
+      lastFrameTimeRef.current = now;
 
-      if (canvas) {
-        const rawX = (1 - result.indexTipX) * canvas.width;
-        const rawY = result.indexTipY * canvas.height;
-        aimTargetRef.current = { x: rawX, y: rawY };
+      const maxHands = Math.min(activeHandCountRef.current, hands.length);
 
-        const prev = aimPositionRef.current;
-        if (prev) {
-          aimPositionRef.current = {
-            x: prev.x + (rawX - prev.x) * AIM_LERP_SPEED,
-            y: prev.y + (rawY - prev.y) * AIM_LERP_SPEED,
-          };
-        } else {
-          aimPositionRef.current = { x: rawX, y: rawY };
+      // Assign hands to slots using spatial proximity (left hand → slot 0, right → slot 1)
+      // MediaPipe may swap hand ordering between frames, so we stabilize by X position
+      const validHands: { idx: number; landmarks: Landmark[] }[] = [];
+      for (let i = 0; i < hands.length; i++) {
+        if (hands[i]) validHands.push({ idx: i, landmarks: hands[i]! });
+      }
+
+      // Sort by wrist X position (landmark 0) — leftmost hand maps to slot 0 in camera space
+      // Since we flip X for rendering, the camera-left hand appears on the right side
+      if (validHands.length >= 2) {
+        validHands.sort((a, b) => a.landmarks[0].x - b.landmarks[0].x);
+      }
+
+      for (let slot = 0; slot < maxHands && slot < validHands.length; slot++) {
+        const { landmarks } = validHands[slot];
+        const detector = gestureDetectorsRef.current[slot];
+        const result = detector.update(landmarks);
+
+        if (canvas) {
+          const rawX = (1 - result.indexTipX) * canvas.width;
+          const rawY = result.indexTipY * canvas.height;
+
+          if (slot === 0) {
+            aimTargetRef.current = { x: rawX, y: rawY };
+          }
+
+          const prev = aimPositionsRef.current[slot];
+          if (prev) {
+            aimPositionsRef.current[slot] = {
+              x: prev.x + (rawX - prev.x) * AIM_LERP_SPEED,
+              y: prev.y + (rawY - prev.y) * AIM_LERP_SPEED,
+            };
+          } else {
+            aimPositionsRef.current[slot] = { x: rawX, y: rawY };
+          }
+        }
+
+        if (result.isFingerGun) {
+          lastPoseSeenRef.current = now;
         }
       }
 
-      if (result.isFingerGun) {
-        lastPoseSeenRef.current = now;
+      // Keep primary aimPositionRef in sync for backward compat
+      aimPositionRef.current = aimPositionsRef.current[0];
+
+      // Clear aim for hands that disappeared
+      for (let i = validHands.length; i < 2; i++) {
+        aimPositionsRef.current[i] = null;
       }
     },
     [handleFire]
@@ -490,7 +560,12 @@ export default function GameCanvas() {
     setIsSurgeWave(false);
     lastHandSeenRef.current = Date.now();
     lastPoseSeenRef.current = Date.now();
-    gestureDetectorRef.current.reset();
+    gestureDetectorsRef.current.forEach(d => d.reset());
+    aimPositionsRef.current = [null, null];
+    handGunStatesRef.current = [
+      { lastFireTime: 0, muzzleFlashUntil: 0, recoilUntil: 0 },
+      { lastFireTime: 0, muzzleFlashUntil: 0, recoilUntil: 0 },
+    ];
 
     if (!hasShownIntroRef.current) {
       // First time: show story intro, then tutorial, then start wave 1

@@ -37,7 +37,7 @@ export function getTrashCountForWave(
 ): number {
   // Accelerating growth: linear base + quadratic ramp so later waves flood the screen
   const base = config.initialTrash + (wave - 1) * config.extraPerWave;
-  const quadraticBonus = Math.floor(0.3 * wave * wave);
+  const quadraticBonus = Math.floor(0.12 * wave * wave);
   const total = base + quadraticBonus;
 
   if (isSurgeWave) {
@@ -69,7 +69,7 @@ export function spawnTrash(
   let height = ZOMBIE_BASE_HEIGHT;
   let hp = 1;
   // Trash gets 8% faster each wave (compounding)
-  const waveSpeedMult = 1 + (wave ? (wave - 1) * 0.08 : 0);
+  const waveSpeedMult = 1 + (wave ? (wave - 1) * 0.04 : 0);
   let speed = config.depthSpeedPerSec * speedVariation * waveSpeedMult;
 
   switch (trashType) {

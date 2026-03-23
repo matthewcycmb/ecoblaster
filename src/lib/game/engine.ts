@@ -1,4 +1,4 @@
-import { GameState, DifficultyConfig } from "@/lib/types";
+import { GameState, DifficultyConfig, HandGunState } from "@/lib/types";
 import {
   moveTrash,
   checkTrashReachedPlayer,
@@ -29,7 +29,9 @@ export function createGameEngine(
   onStateChange: (phase: GameState["phase"]) => void,
   getConfig: () => DifficultyConfig,
   getVideoElement?: () => HTMLVideoElement | null,
-  getAimPosition?: () => { x: number; y: number } | null
+  getAimPosition?: () => { x: number; y: number } | null,
+  getAimPositions?: () => ({ x: number; y: number } | null)[],
+  getHandGunStates?: () => HandGunState[]
 ): GameEngine {
   const ctx = canvas.getContext("2d")!;
   let animId = 0;
@@ -46,8 +48,11 @@ export function createGameEngine(
     lastTime = now;
 
     if (state.phase === "playing") {
-      const aim = getAimPosition?.() ?? null;
-      updatePlaying(state, deltaMs, canvas.width, canvas.height, config, onStateChange, aim);
+      const allAims = getAimPositions?.() ?? [];
+      const aim = allAims[0] ?? getAimPosition?.() ?? null;
+      const allAimsList = allAims.filter(Boolean) as { x: number; y: number }[];
+      if (allAimsList.length === 0 && aim) allAimsList.push(aim);
+      updatePlaying(state, deltaMs, canvas.width, canvas.height, config, onStateChange, aim, allAimsList);
     } else if (state.phase === "wave-countdown") {
       if (Date.now() >= state.waveCountdownUntil) {
         state.phase = "playing";
@@ -63,8 +68,16 @@ export function createGameEngine(
     );
 
     const video = getVideoElement?.() ?? null;
-    const aim = getAimPosition?.() ?? null;
-    renderFrame(ctx, state, canvas.width, canvas.height, video, aim?.x, aim?.y);
+    const aims = getAimPositions?.() ?? [];
+    const aim = aims[0] ?? getAimPosition?.() ?? null;
+    const secondAim = aims[1] ?? null;
+    const handGunStatesArr = getHandGunStates?.() ?? [];
+    renderFrame(
+      ctx, state, canvas.width, canvas.height, video,
+      aim?.x, aim?.y,
+      secondAim?.x, secondAim?.y,
+      handGunStatesArr.length > 0 ? handGunStatesArr : undefined
+    );
     animId = requestAnimationFrame(tick);
   }
 
@@ -88,7 +101,8 @@ function updatePlaying(
   canvasHeight: number,
   config: DifficultyConfig,
   onStateChange: (phase: GameState["phase"]) => void,
-  aim: { x: number; y: number } | null
+  aim: { x: number; y: number } | null,
+  allAims: { x: number; y: number }[] = []
 ): void {
   const now = Date.now();
 
@@ -108,9 +122,9 @@ function updatePlaying(
     (pu) => pu.collected || now - pu.createdAt < POWERUP_LIFETIME_MS
   );
 
-  // --- Auto-collect power-ups near crosshair ---
-  if (aim) {
-    checkPowerUpCollection(state, aim.x, aim.y);
+  // --- Auto-collect power-ups near crosshair(s) ---
+  for (const a of allAims) {
+    checkPowerUpCollection(state, a.x, a.y);
   }
 
   // --- Spawn trash over time (batch size grows each wave) ---

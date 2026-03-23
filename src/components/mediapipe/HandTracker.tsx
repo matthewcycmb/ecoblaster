@@ -4,7 +4,7 @@ import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Landmark } from "@/lib/mediapipe/landmarkUtils";
 
 interface HandTrackerProps {
-  onFrame: (landmarks: Landmark[] | null) => void;
+  onFrame: (hands: (Landmark[] | null)[]) => void;
   onStatusChange: (status: TrackerStatus) => void;
   paused: boolean;
 }
@@ -89,14 +89,14 @@ const HandTracker = forwardRef<HandTrackerHandle, HandTrackerProps>(
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
               baseOptions: { modelAssetPath: modelPath, delegate: preferredDelegate },
               runningMode: "VIDEO",
-              numHands: 1,
+              numHands: 2,
             });
           } catch {
             // GPU delegate can fail on some devices — fall back to CPU
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
               baseOptions: { modelAssetPath: modelPath, delegate: "CPU" },
               runningMode: "VIDEO",
-              numHands: 1,
+              numHands: 2,
             });
           }
 
@@ -132,10 +132,14 @@ const HandTracker = forwardRef<HandTrackerHandle, HandTrackerProps>(
                     };
                   }
                 ).detectForVideo(video, performance.now());
-                const landmarks = result.landmarks?.[0] ?? null;
-                onFrame(landmarks as Landmark[] | null);
+                const hands: (Landmark[] | null)[] = [];
+                const handCount = result.landmarks?.length ?? 0;
+                for (let i = 0; i < handCount; i++) {
+                  hands.push(result.landmarks![i] as Landmark[]);
+                }
+                onFrame(hands);
               } catch {
-                onFrame(null);
+                onFrame([]);
               }
             }
 

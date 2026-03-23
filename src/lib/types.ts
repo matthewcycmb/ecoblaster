@@ -97,6 +97,12 @@ export interface GameState {
   comboResetFlashUntil: number; // red flash on combo break
 }
 
+export interface HandGunState {
+  lastFireTime: number;
+  muzzleFlashUntil: number;
+  recoilUntil: number;
+}
+
 export interface Settings {
   difficulty: Difficulty;
   muted: boolean;
