@@ -8,6 +8,9 @@ import {
 import { checkPowerUpCollection } from "./powerups";
 import { moveTurtles, checkTurtleTrashCollision, maybeSpawnTurtles } from "./turtles";
 import { renderFrame } from "./renderer";
+import { updateDefenders } from "./defenders";
+import { applyUpgrades } from "./upgrades";
+import { getRandomUpgradeChoices } from "./upgrades";
 import {
   DAMAGE_PER_HIT,
   HIT_TOAST_DURATION_MS,
@@ -17,6 +20,7 @@ import {
   BOSS_WAVE_INTERVAL,
   BOSS_SPAWN_INTERVAL_MS,
   TURTLE_DAMAGE,
+  INITIAL_HEALTH,
 } from "@/lib/constants";
 import { playBossRoar } from "@/lib/audio/sfx";
 
@@ -108,8 +112,10 @@ function updatePlaying(
 ): void {
   const now = Date.now();
 
-  // --- Combo decay ---
-  if (state.combo.count > 0 && now - state.combo.lastKillTime > COMBO_DECAY_MS) {
+  // --- Combo decay (with longer-combos upgrade bonus) ---
+  const mods = applyUpgrades(state.upgrades);
+  const comboDecayTime = COMBO_DECAY_MS + mods.comboDecayBonus;
+  if (state.combo.count > 0 && now - state.combo.lastKillTime > comboDecayTime) {
     state.combo.count = 0;
     state.combo.multiplier = 1;
   }
@@ -218,6 +224,9 @@ function updatePlaying(
     }
   }
 
+  // --- Update reef defenders ---
+  updateDefenders(state, canvasWidth, canvasHeight);
+
   // --- Remove dead trash (keep collected power-ups from this frame) ---
   state.trashItems = state.trashItems.filter((z) => z.alive);
 
@@ -246,10 +255,11 @@ function updatePlaying(
 
   if (allSpawned && allDead && surgeCondition) {
     state.wave++;
-    state.phase = "wave-countdown";
-    state.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
+    // Show upgrade selection between waves
+    state.pendingUpgradeChoices = getRandomUpgradeChoices(state.upgrades);
+    state.phase = "upgrade-select";
     state.waveTransitionUntil = Date.now() + 2000;
-    onStateChange("wave-countdown");
+    onStateChange("upgrade-select");
   }
 }
 
@@ -259,6 +269,16 @@ export function startWave(
   canvasHeight: number,
   config: DifficultyConfig
 ): void {
+  // Apply health-regen and tougher-reef upgrades
+  const mods = applyUpgrades(state.upgrades);
+  if (mods.healthRegenPerWave > 0) {
+    const maxHp = INITIAL_HEALTH + mods.maxHealthBonus;
+    state.health = Math.min(maxHp, state.health + mods.healthRegenPerWave);
+  }
+
+  // Reset ocean current charges
+  state.currentCharges = 2;
+
   // Detect surge wave
   state.isSurgeWave = state.wave % BOSS_WAVE_INTERVAL === 0;
   state.surgeCleared = false;

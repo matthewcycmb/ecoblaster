@@ -17,7 +17,29 @@ export type GamePhase =
   | "playing"
   | "paused"
   | "wave-countdown"
+  | "upgrade-select"
   | "game-over";
+
+export type UpgradeId = "wider-hitbox" | "faster-fire" | "health-regen" | "longer-combos" | "splash-damage" | "score-bonus" | "tougher-reef";
+
+export interface Upgrade {
+  id: UpgradeId;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export interface ReefDefender {
+  id: string;
+  laneX: number;
+  depth: number;
+  hp: number;
+  maxHp: number;
+  lastAttackTime: number;
+  x: number;
+  y: number;
+  screenScale: number;
+}
 
 export interface TrashItem {
   id: string;
@@ -106,8 +128,16 @@ export interface GameState {
   isNewHighScore: boolean;
   waveTransitionUntil: number;
   lastBargeSpawnTime: number;
-  comboFlashUntil: number;     // gold flash on combo milestone
-  comboResetFlashUntil: number; // red flash on combo break
+  comboFlashUntil: number;
+  comboResetFlashUntil: number;
+  // Upgrades
+  upgrades: UpgradeId[];
+  pendingUpgradeChoices: Upgrade[] | null;
+  // Ocean current
+  currentCharges: number;
+  currentEffectUntil: number;
+  // Reef defenders
+  reefDefenders: ReefDefender[];
 }
 
 export interface HandGunState {

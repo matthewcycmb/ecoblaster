@@ -1,4 +1,4 @@
-import { GameState, TrashItem, SeaTurtle, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState } from "@/lib/types";
+import { GameState, TrashItem, SeaTurtle, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState, ReefDefender } from "@/lib/types";
 import {
   TURTLE_BASE_WIDTH,
   TURTLE_BASE_HEIGHT,
@@ -158,6 +158,16 @@ export function renderFrame(
 
   for (const z of sorted) {
     drawTrashItem(ctx, z, t);
+  }
+
+  // Ocean current effect
+  if (now < state.currentEffectUntil) {
+    drawCurrentEffect(ctx, canvasWidth, canvasHeight, state.currentEffectUntil - now);
+  }
+
+  // Reef defenders (mid-field, after trash)
+  for (const defender of state.reefDefenders) {
+    drawReefDefender(ctx, defender, now);
   }
 
   // Sea turtles
@@ -525,36 +535,187 @@ function drawBossHPBar(ctx: CanvasRenderingContext2D, boss: TrashItem, canvasWid
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   OCEAN CURRENT EFFECT
+   ═══════════════════════════════════════════════════════════════ */
+
+function drawCurrentEffect(ctx: CanvasRenderingContext2D, w: number, h: number, remaining: number): void {
+  const alpha = Math.min(1, remaining / 600) * 0.4;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const waveCount = 6;
+  for (let i = 0; i < waveCount; i++) {
+    const progress = 1 - remaining / 600;
+    const xOffset = (progress * w * 1.5 + i * w / waveCount) % (w * 1.2) - w * 0.1;
+    ctx.strokeStyle = `rgba(100, 200, 255, ${0.6 - i * 0.08})`;
+    ctx.lineWidth = 3 - i * 0.3;
+    ctx.beginPath();
+    for (let y = 0; y < h; y += 20) {
+      const wx = xOffset + Math.sin(y * 0.02 + i) * 30;
+      if (y === 0) ctx.moveTo(wx, y);
+      else ctx.lineTo(wx, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF DEFENDER
+   ═══════════════════════════════════════════════════════════════ */
+
+function drawReefDefender(ctx: CanvasRenderingContext2D, defender: ReefDefender, now: number): void {
+  const s = defender.screenScale;
+  const w = 40 * s;
+  const h = 30 * s;
+  const isAttacking = now - defender.lastAttackTime < 200;
+
+  ctx.save();
+  ctx.translate(defender.x, defender.y);
+
+  // Glow when attacking
+  if (isAttacking) {
+    ctx.shadowColor = "#33CCFF";
+    ctx.shadowBlur = 15;
+  }
+
+  // Fish body
+  ctx.fillStyle = "#33AAFF";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tail
+  ctx.fillStyle = "#2288DD";
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, 0);
+  ctx.lineTo(-w / 2 - w * 0.3, -h * 0.4);
+  ctx.lineTo(-w / 2 - w * 0.3, h * 0.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  ctx.arc(w * 0.2, -h * 0.1, 4 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#000000";
+  ctx.beginPath();
+  ctx.arc(w * 0.22, -h * 0.1, 2 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  // HP pips above
+  const pipSize = 5 * s;
+  const pipGap = 3 * s;
+  const totalW = defender.maxHp * (pipSize + pipGap) - pipGap;
+  const startX = -totalW / 2;
+  for (let i = 0; i < defender.maxHp; i++) {
+    ctx.fillStyle = i < defender.hp ? "#33FF66" : "rgba(255,255,255,0.2)";
+    ctx.fillRect(startX + i * (pipSize + pipGap), -h / 2 - 10 * s, pipSize, pipSize);
+  }
+
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════════
    COMBO DISPLAY
    ═══════════════════════════════════════════════════════════════ */
 
 function drawComboDisplay(ctx: CanvasRenderingContext2D, combo: ComboState, canvasWidth: number, canvasHeight: number): void {
-  const text = `x${combo.multiplier}`;
-  const subText = `${combo.count} COMBO`;
+  const now = Date.now();
   const x = canvasWidth / 2;
   const y = canvasHeight * 0.15;
-  const pulse = 1 + Math.sin(Date.now() / 100) * 0.05 * combo.multiplier;
-  // Scale the combo number size with hit count — grows satisfyingly
-  const countScale = Math.min(2.0, 1.0 + combo.count * 0.03);
-  const fontSize = Math.round(36 * countScale);
 
-  ctx.save();
-  ctx.translate(x, y); ctx.scale(pulse, pulse);
-
-  // Glow behind combo at higher multipliers
-  if (combo.multiplier >= 3) {
-    ctx.shadowColor = combo.multiplier >= 5 ? "#FFD166" : "#FF9900";
-    ctx.shadowBlur = 15 + combo.multiplier * 3;
+  // Punch animation: scale up 1.3x on kill, spring back over 150ms
+  const killAge = now - combo.lastKillTime;
+  let punchScale = 1;
+  if (killAge < 150) {
+    const t = killAge / 150;
+    // ease-out bounce: start at 1.3, spring back to 1.0
+    punchScale = 1.3 - 0.3 * (t * t * (3 - 2 * t));
   }
 
-  ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`; ctx.textAlign = "center";
-  ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 4; ctx.lineJoin = "round";
-  ctx.strokeText(text, 0, 0);
-  ctx.fillStyle = combo.multiplier >= 5 ? "#FF9900" : combo.multiplier >= 3 ? "#FFD166" : "#FFFFFF";
-  ctx.fillText(text, 0, 0);
-  ctx.shadowBlur = 0;
-  ctx.font = "bold 14px Inter, system-ui, sans-serif";
-  ctx.strokeText(subText, 0, 26); ctx.fillStyle = "#FFFFFF"; ctx.fillText(subText, 0, 26);
+  // Tier colors
+  const tierColor = combo.multiplier >= 5 ? "#FF9900" : combo.multiplier >= 3 ? "#FFD166" : "#FFFFFF";
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(punchScale, punchScale);
+
+  // Fire effects at 10+ streak
+  if (combo.count >= 10) {
+    const particleCount = Math.min(12, 5 + combo.count / 3);
+    for (let i = 0; i < particleCount; i++) {
+      const seed = i * 137.5 + now * 0.003;
+      const wobbleX = Math.sin(seed) * 25;
+      const floatY = -((now * 0.08 + i * 30) % 60) - 20;
+      const life = 1 - (((now * 0.08 + i * 30) % 60) / 60);
+      const radius = (3 + i % 4) * life;
+      const grad = ctx.createRadialGradient(wobbleX, floatY, 0, wobbleX, floatY, radius);
+      grad.addColorStop(0, `rgba(255, 200, 50, ${0.8 * life})`);
+      grad.addColorStop(0.5, `rgba(255, 100, 20, ${0.5 * life})`);
+      grad.addColorStop(1, `rgba(200, 30, 0, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(wobbleX, floatY, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Large kill counter (72px+)
+  const fontSize = Math.max(72, 72 + combo.count * 1.5);
+  ctx.font = `bold ${Math.round(fontSize)}px Inter, system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.strokeStyle = "rgba(0,0,0,0.85)";
+  ctx.lineWidth = 6;
+  ctx.lineJoin = "round";
+  ctx.strokeText(`${combo.count}`, 0, 0);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillText(`${combo.count}`, 0, 0);
+
+  // Multiplier label
+  ctx.font = "bold 22px Inter, system-ui, sans-serif";
+  ctx.strokeStyle = "rgba(0,0,0,0.7)";
+  ctx.lineWidth = 3;
+  const multText = `x${combo.multiplier} COMBO`;
+  ctx.strokeText(multText, 0, fontSize * 0.45);
+  ctx.fillStyle = tierColor;
+  ctx.fillText(multText, 0, fontSize * 0.45);
+
+  // Tier progress bar
+  const COMBO_TIERS_ORDERED = [
+    { threshold: 5, multiplier: 2 },
+    { threshold: 10, multiplier: 3 },
+    { threshold: 20, multiplier: 5 },
+  ];
+  let nextThreshold = 0;
+  let prevThreshold = 0;
+  for (const tier of COMBO_TIERS_ORDERED) {
+    if (combo.count < tier.threshold) {
+      nextThreshold = tier.threshold;
+      break;
+    }
+    prevThreshold = tier.threshold;
+  }
+
+  if (nextThreshold > 0) {
+    const barW = 120;
+    const barH = 6;
+    const barY = fontSize * 0.45 + 18;
+    const progress = (combo.count - prevThreshold) / (nextThreshold - prevThreshold);
+
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.beginPath();
+    ctx.roundRect(-barW / 2, barY, barW, barH, 3);
+    ctx.fill();
+    ctx.fillStyle = tierColor;
+    ctx.beginPath();
+    ctx.roundRect(-barW / 2, barY, barW * Math.min(1, progress), barH, 3);
+    ctx.fill();
+  }
+
   ctx.restore();
 }
 

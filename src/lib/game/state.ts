@@ -55,5 +55,10 @@ export function createInitialState(): GameState {
     lastBargeSpawnTime: 0,
     comboFlashUntil: 0,
     comboResetFlashUntil: 0,
+    upgrades: [],
+    pendingUpgradeChoices: null,
+    currentCharges: 2,
+    currentEffectUntil: 0,
+    reefDefenders: [],
   };
 }

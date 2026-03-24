@@ -81,6 +81,8 @@ export default function GameHUD({
   onPause,
   musicMuted,
   onToggleMusic,
+  currentCharges,
+  onCurrentPush,
 }: {
   health: number;
   score: number;
@@ -89,6 +91,8 @@ export default function GameHUD({
   onPause: () => void;
   musicMuted: boolean;
   onToggleMusic: () => void;
+  currentCharges?: number;
+  onCurrentPush?: () => void;
 }) {
   return (
     <>
@@ -121,6 +125,23 @@ export default function GameHUD({
           <span className="text-cyan-400 font-mono font-bold text-sm sm:text-lg">{score.toLocaleString()}</span>
         </div>
       </div>
+
+      {/* Ocean current push — bottom left */}
+      {currentCharges !== undefined && onCurrentPush && (
+        <button
+          onClick={onCurrentPush}
+          disabled={currentCharges === 0}
+          className={`pointer-events-auto absolute bottom-2 left-2 sm:bottom-3 sm:left-3 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold text-sm transition-all ${
+            currentCharges > 0
+              ? "bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/40 active:scale-95"
+              : "bg-gray-500/20 border border-gray-500/20 text-gray-500 cursor-not-allowed"
+          }`}
+          aria-label={`Ocean current push (${currentCharges} charges)`}
+        >
+          <span className="text-lg">🌊</span>
+          <span>{currentCharges}</span>
+        </button>
+      )}
 
       {/* Music mute toggle — bottom right */}
       <button

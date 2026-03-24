@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { GameState, GamePhase, Settings, Difficulty, HandGunState } from "@/lib/types";
+import { GameState, GamePhase, Settings, Difficulty, HandGunState, Upgrade } from "@/lib/types";
 import { createInitialState, saveHighScore } from "@/lib/game/state";
 import { createGameEngine, startWave, GameEngine } from "@/lib/game/engine";
 import { DIFFICULTY_CONFIGS } from "@/lib/game/difficulty";
@@ -16,6 +16,9 @@ import { EASY_HIT_MARGIN, NORMAL_HIT_MARGIN } from "@/lib/constants";
 import { spawnNetFragments } from "@/lib/game/zombies";
 import { incrementCombo } from "@/lib/game/combo";
 import { maybeDropPowerUp } from "@/lib/game/powerups";
+import { applyUpgrades } from "@/lib/game/upgrades";
+import { activateOceanCurrent } from "@/lib/game/current";
+import { createDefender } from "@/lib/game/defenders";
 import { loadSettings, saveSettings } from "@/lib/settings/store";
 import { leaderboardNameSchema } from "@/lib/settings/schema";
 import {
@@ -58,6 +61,7 @@ import WaveCountdown from "./WaveCountdown";
 import TutorialOverlay from "./TutorialOverlay";
 import StoryIntro from "./StoryIntro";
 import DifficultyPrompt from "./DifficultyPrompt";
+import UpgradeSelect from "./UpgradeSelect";
 import type { TrackerStatus, HandTrackerHandle } from "@/components/mediapipe/HandTracker";
 
 const HandTracker = dynamic(
@@ -82,6 +86,9 @@ export default function GameCanvas() {
     { lastFireTime: 0, muzzleFlashUntil: 0, recoilUntil: 0 },
   ]);
   const activeHandCountRef = useRef(2);
+  const secondHandFirstSeenRef = useRef(0);   // when second hand was first detected
+  const secondHandLastSeenRef = useRef(0);     // when second hand was last detected
+  const secondHandActiveRef = useRef(false);   // debounced: is second hand "confirmed"
   const fpsHistoryRef = useRef<number[]>([]);
   const lastFrameTimeRef = useRef(0);
   const pendingStartRef = useRef(false);
@@ -106,6 +113,8 @@ export default function GameCanvas() {
   const hasShownIntroRef = useRef(false);
   const [showDifficultyPrompt, setShowDifficultyPrompt] = useState(false);
   const [musicMuted, setMusicMutedState] = useState(false);
+  const [currentCharges, setCurrentCharges] = useState(2);
+  const [pendingUpgradeChoices, setPendingUpgradeChoices] = useState<Upgrade[] | null>(null);
   const showDifficultyPromptRef = useRef(false);
   const hasShownDifficultyPromptRef = useRef(false);
   const hasPlayedOnceRef = useRef(false);
@@ -124,6 +133,14 @@ export default function GameCanvas() {
     setScore(s.score);
     setWave(s.wave);
     setIsSurgeWave(s.isSurgeWave);
+    setCurrentCharges(s.currentCharges);
+    if (s.pendingUpgradeChoices && s.phase === "upgrade-select") {
+      setPendingUpgradeChoices(s.pendingUpgradeChoices);
+    }
+    // Apply wider-hitbox upgrade bonus to hit detection margin
+    const upgradeMods = applyUpgrades(s.upgrades);
+    const baseMargin = settingsRef.current.difficulty === "easy" ? EASY_HIT_MARGIN : NORMAL_HIT_MARGIN;
+    setHitMarginMultiplier(baseMargin + upgradeMods.hitMarginBonus);
 
     if (s.phase === "playing" && cameraActive) {
       const now = Date.now();
@@ -147,8 +164,9 @@ export default function GameCanvas() {
           const aim = aimPositionsRef.current[i];
           const handGun = handGunStatesRef.current[i];
           if (!aim) continue;
-          const cooldown = s.activePowerUp?.type === "rapid-fire"
-            ? RAPID_FIRE_COOLDOWN_MS : AUTO_FIRE_INTERVAL_MS;
+          const autoMods = applyUpgrades(s.upgrades);
+          const cooldown = (s.activePowerUp?.type === "rapid-fire"
+            ? RAPID_FIRE_COOLDOWN_MS : AUTO_FIRE_INTERVAL_MS) * autoMods.fireCooldownMult;
           if (now - handGun.lastFireTime >= cooldown) {
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
@@ -202,8 +220,13 @@ export default function GameCanvas() {
           fadeOutBackgroundMusic(2000);
           saveHighScore(stateRef.current.score);
         }
-        if (newPhase === "wave-countdown") {
+        if (newPhase === "upgrade-select") {
+          setPendingUpgradeChoices(stateRef.current.pendingUpgradeChoices);
+        }
+        if (newPhase === "upgrade-select") {
           playZombieGroan();
+        }
+        if (newPhase === "wave-countdown") {
           // After wave 2: show dual-gun hint (once per session)
           if (stateRef.current.wave === 3 && !hasShownDualGunHintRef.current) {
             hasShownDualGunHintRef.current = true;
@@ -257,7 +280,8 @@ export default function GameCanvas() {
       state.comboFlashUntil = now + 300;
     }
 
-    const killScore = BASE_SCORE_PER_KILL * state.combo.multiplier;
+    const mods = applyUpgrades(state.upgrades);
+    const killScore = Math.round(BASE_SCORE_PER_KILL * state.combo.multiplier * mods.scoreBonusMult);
     state.score += killScore;
     state.lastScoreChangeTime = now;
 
@@ -313,9 +337,11 @@ export default function GameCanvas() {
     const now = Date.now();
     const hi = handIndex ?? 0;
     const handGun = handGunStatesRef.current[hi];
-    const cooldown = state.activePowerUp?.type === "rapid-fire"
+    const mods = applyUpgrades(state.upgrades);
+    const baseCooldown = state.activePowerUp?.type === "rapid-fire"
       ? RAPID_FIRE_COOLDOWN_MS
       : AUTO_FIRE_INTERVAL_MS;
+    const cooldown = baseCooldown * mods.fireCooldownMult;
     if (now - handGun.lastFireTime < cooldown) return;
 
     // Update per-hand state
@@ -395,6 +421,17 @@ export default function GameCanvas() {
       if (hit.hp <= 0) {
         processKill(state, hit, now);
       }
+      // Splash damage from upgrade
+      if (mods.splashRadius > 0) {
+        const splashHits = findTrashInRadius(state.trashItems, hit.x, hit.y, mods.splashRadius);
+        for (const sz of splashHits) {
+          if (sz === hit || !sz.alive) continue;
+          sz.hp--;
+          if (sz.hp <= 0) {
+            processKill(state, sz, now);
+          }
+        }
+      }
       playHit();
     } else {
       // Miss — reset combo with red flash
@@ -457,7 +494,33 @@ export default function GameCanvas() {
         validHands.sort((a, b) => a.landmarks[0].x - b.landmarks[0].x);
       }
 
-      for (let slot = 0; slot < maxHands && slot < validHands.length; slot++) {
+      // Debounce second hand: require 500ms sustained detection before activating,
+      // and keep it alive for 300ms after it disappears to avoid flickering
+      const SECOND_HAND_ACTIVATE_MS = 500;
+      const SECOND_HAND_GRACE_MS = 300;
+
+      if (validHands.length >= 2) {
+        secondHandLastSeenRef.current = now;
+        if (secondHandFirstSeenRef.current === 0) {
+          secondHandFirstSeenRef.current = now;
+        }
+        if (!secondHandActiveRef.current && now - secondHandFirstSeenRef.current >= SECOND_HAND_ACTIVATE_MS) {
+          secondHandActiveRef.current = true;
+        }
+      } else {
+        if (secondHandActiveRef.current && now - secondHandLastSeenRef.current > SECOND_HAND_GRACE_MS) {
+          secondHandActiveRef.current = false;
+          secondHandFirstSeenRef.current = 0;
+        }
+        if (!secondHandActiveRef.current) {
+          secondHandFirstSeenRef.current = 0;
+        }
+      }
+
+      // Only process slot 1 if second hand is confirmed active
+      const effectiveMaxHands = secondHandActiveRef.current ? maxHands : Math.min(maxHands, 1);
+
+      for (let slot = 0; slot < effectiveMaxHands && slot < validHands.length; slot++) {
         const { landmarks } = validHands[slot];
         const detector = gestureDetectorsRef.current[slot];
         const result = detector.update(landmarks);
@@ -489,8 +552,14 @@ export default function GameCanvas() {
       // Keep primary aimPositionRef in sync for backward compat
       aimPositionRef.current = aimPositionsRef.current[0];
 
-      // Clear aim for hands that disappeared
+      // Clear aim for hands that aren't active
+      if (!secondHandActiveRef.current) {
+        aimPositionsRef.current[1] = null;
+      }
       for (let i = validHands.length; i < 2; i++) {
+        if (i === 1 && secondHandActiveRef.current && now - secondHandLastSeenRef.current <= SECOND_HAND_GRACE_MS) {
+          continue; // keep slot 1 alive during grace period
+        }
         aimPositionsRef.current[i] = null;
       }
     },
@@ -641,6 +710,41 @@ export default function GameCanvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const handleUpgradeSelect = useCallback((upgrade: Upgrade) => {
+    const state = stateRef.current;
+    state.upgrades.push(upgrade.id);
+    state.pendingUpgradeChoices = null;
+    setPendingUpgradeChoices(null);
+    // Apply tougher-reef immediately (max health increase)
+    if (upgrade.id === "tougher-reef") {
+      const mods = applyUpgrades(state.upgrades);
+      const maxHp = 100 + mods.maxHealthBonus;
+      state.health = Math.min(maxHp, state.health + 15);
+    }
+    state.phase = "wave-countdown";
+    state.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
+    setPhase("wave-countdown");
+  }, []);
+
+  const handleBuyDefender = useCallback(() => {
+    const state = stateRef.current;
+    if (state.score < 500) return;
+    state.score -= 500;
+    const defender = createDefender(state);
+    state.reefDefenders.push(defender);
+    // Dismiss upgrade screen and move to wave countdown
+    state.pendingUpgradeChoices = null;
+    setPendingUpgradeChoices(null);
+    state.phase = "wave-countdown";
+    state.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
+    setPhase("wave-countdown");
+  }, []);
+
+  const handleCurrentPush = useCallback(() => {
+    activateOceanCurrent(stateRef.current);
+    setCurrentCharges(stateRef.current.currentCharges);
+  }, []);
+
   const handleResume = useCallback(() => {
     stateRef.current.phase = "playing";
     setPhase("playing");
@@ -701,7 +805,7 @@ export default function GameCanvas() {
       )}
 
       {/* HUD overlay */}
-      {(phase === "playing" || phase === "wave-countdown") && (
+      {(phase === "playing" || phase === "wave-countdown" || phase === "upgrade-select") && (
         <GameHUD
           health={health}
           score={score}
@@ -717,6 +821,8 @@ export default function GameCanvas() {
             setMusicMutedState(next);
             setMusicMuted(next);
           }}
+          currentCharges={currentCharges}
+          onCurrentPush={handleCurrentPush}
         />
       )}
 
@@ -847,6 +953,16 @@ export default function GameCanvas() {
 
           <p className="text-[8px] sm:text-[10px] text-gray-600/60 mt-4 sm:mt-5 tracking-wide text-center">Tap pause button to pause</p>
         </div>
+      )}
+
+      {/* Upgrade selection */}
+      {phase === "upgrade-select" && pendingUpgradeChoices && (
+        <UpgradeSelect
+          choices={pendingUpgradeChoices}
+          onSelect={handleUpgradeSelect}
+          score={score}
+          onBuyDefender={handleBuyDefender}
+        />
       )}
 
       {/* Wave countdown */}
