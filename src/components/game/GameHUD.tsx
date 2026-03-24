@@ -99,7 +99,7 @@ export default function GameHUD({
       {/* Top bar: Wave + Pause */}
       <div className="absolute top-4 left-0 right-0 px-4 flex items-center justify-between pointer-events-none">
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 sm:px-4 py-1.5 sm:py-2">
-          <span className={`font-mono font-bold text-xs sm:text-sm ${isSurgeWave ? "text-red-400" : "text-white/70"}`}>
+          <span className={`font-mono font-bold text-xs sm:text-sm ${isSurgeWave ? "text-red-400" : "text-white/90"}`}>
             {isSurgeWave ? `SURGE WAVE ${wave}` : `WAVE ${wave}`}
           </span>
         </div>
@@ -113,7 +113,7 @@ export default function GameHUD({
       </div>
 
       {/* Bottom bar: Health + Score */}
-      <div className="absolute bottom-16 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
+      <div className="absolute bottom-12 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
         {/* Health — living coral */}
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
           <span className="text-white font-semibold text-xs sm:text-sm whitespace-nowrap">Reef:</span>
@@ -134,7 +134,7 @@ export default function GameHUD({
           className={`pointer-events-auto absolute bottom-2 left-2 sm:bottom-3 sm:left-3 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold text-sm transition-all ${
             currentCharges > 0
               ? "bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/40 active:scale-95"
-              : "bg-gray-500/20 border border-gray-500/20 text-gray-500 cursor-not-allowed"
+              : "bg-gray-500/20 border border-gray-500/30 text-gray-400 cursor-not-allowed"
           }`}
           aria-label={`Ocean current push (${currentCharges} charges)`}
         >
@@ -146,7 +146,7 @@ export default function GameHUD({
       {/* Music mute toggle — bottom right */}
       <button
         onClick={onToggleMusic}
-        className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors"
+        className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors"
         aria-label={musicMuted ? "Unmute music" : "Mute music"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-5 sm:h-5">

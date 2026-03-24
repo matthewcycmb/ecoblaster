@@ -31,6 +31,7 @@ import {
   POSE_NOT_DETECTED_TIMEOUT_MS,
   RAPID_FIRE_COOLDOWN_MS,
   SHOTGUN_BLAST_RADIUS,
+  SHOTGUN_MAX_TARGETS,
   BASE_SCORE_PER_KILL,
   BOSS_BONUS_MULTIPLIER,
   BOSS_KILL_SHAKE_MS,
@@ -411,7 +412,7 @@ export default function GameCanvas() {
 
     // Shotgun blast
     if (state.activePowerUp?.type === "shotgun-blast") {
-      const hits = findTrashInRadius(state.trashItems, targetX, targetY, SHOTGUN_BLAST_RADIUS);
+      const hits = findTrashInRadius(state.trashItems, targetX, targetY, SHOTGUN_BLAST_RADIUS, SHOTGUN_MAX_TARGETS);
       for (const z of hits) {
         z.hp--;
         if (z.hp <= 0) {
@@ -822,7 +823,7 @@ export default function GameCanvas() {
   }, [beginCountdown]);
 
   return (
-    <div className="relative flex items-center justify-center w-full h-screen bg-game-bg overflow-hidden">
+    <div className="relative flex items-center justify-center w-full h-dvh bg-game-bg overflow-hidden">
       <canvas
         ref={canvasRef}
         onPointerUp={handleCanvasPointerUp}
@@ -937,12 +938,12 @@ export default function GameCanvas() {
           <h2 className="game-title text-xl sm:text-3xl font-black text-cyan-400 mb-3 sm:mb-4 tracking-widest text-center">
             REEF DEFENDER
           </h2>
-          <p className="game-subtitle text-[10px] sm:text-xs text-gray-400/70 mb-5 sm:mb-7 text-center tracking-wide">
+          <p className="game-subtitle text-xs text-gray-400/70 mb-5 sm:mb-7 text-center tracking-wide">
             {hasPlayedOnceRef.current ? "Protect the reef. Again." : "Protect the reef with your hands."}
           </p>
 
           <div className="flex flex-col items-center gap-1.5 sm:gap-2 mb-4 sm:mb-5 w-full max-w-64 sm:max-w-72">
-            <label className="text-gray-400 text-[10px] sm:text-xs font-medium tracking-wide uppercase self-start">Player Name</label>
+            <label className="text-gray-400 text-xs font-medium tracking-wide uppercase self-start">Player Name</label>
             <input
               type="text"
               value={playerName}
@@ -965,7 +966,7 @@ export default function GameCanvas() {
           <div className="flex gap-2.5 sm:gap-3 mt-3 sm:mt-4">
             <button
               onClick={() => handleSetDifficulty("easy")}
-              className={`rounded-lg border px-4 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold tracking-wider uppercase transition-colors ${
+              className={`rounded-lg border px-5 sm:px-6 py-2.5 sm:py-2.5 text-xs font-bold tracking-wider uppercase transition-colors ${
                 difficulty === "easy"
                   ? "bg-emerald-500/90 border-emerald-400/60 text-white"
                   : "bg-white/5 border-white/15 text-gray-400 hover:bg-white/10"
@@ -975,7 +976,7 @@ export default function GameCanvas() {
             </button>
             <button
               onClick={() => handleSetDifficulty("normal")}
-              className={`rounded-lg border px-4 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold tracking-wider uppercase transition-colors ${
+              className={`rounded-lg border px-5 sm:px-6 py-2.5 sm:py-2.5 text-xs font-bold tracking-wider uppercase transition-colors ${
                 difficulty === "normal"
                   ? "bg-amber-500/90 border-amber-400/60 text-white"
                   : "bg-white/5 border-white/15 text-gray-400 hover:bg-white/10"
@@ -985,7 +986,7 @@ export default function GameCanvas() {
             </button>
           </div>
 
-          <p className="text-[8px] sm:text-[10px] text-gray-600/60 mt-4 sm:mt-5 tracking-wide text-center">Tap pause button to pause</p>
+          <p className="text-xs text-gray-500/50 mt-4 sm:mt-5 tracking-wide text-center">Tap pause button to pause</p>
         </div>
       )}
 

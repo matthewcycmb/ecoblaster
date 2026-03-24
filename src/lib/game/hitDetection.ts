@@ -163,9 +163,10 @@ export function findTrashInRadius(
   trashItems: TrashItem[],
   centerX: number,
   centerY: number,
-  radius: number
+  radius: number,
+  maxTargets?: number
 ): TrashItem[] {
-  const result: TrashItem[] = [];
+  const result: { item: TrashItem; dist: number }[] = [];
   for (const z of trashItems) {
     if (!z.alive) continue;
     const bb = getTrashAABB(z);
@@ -176,8 +177,10 @@ export function findTrashInRadius(
       ((bb.right - bb.left) / 2) ** 2 + ((bb.bottom - bb.top) / 2) ** 2
     );
     if (dist < boxHalfDiag + radius) {
-      result.push(z);
+      result.push({ item: z, dist });
     }
   }
-  return result;
+  result.sort((a, b) => a.dist - b.dist);
+  const items = result.map((r) => r.item);
+  return maxTargets ? items.slice(0, maxTargets) : items;
 }

@@ -59,6 +59,7 @@ export const POWERUP_COLLECT_RADIUS = 60;
 export const POWERUP_DURATION_MS = 8000;
 export const RAPID_FIRE_COOLDOWN_MS = 120;
 export const SHOTGUN_BLAST_RADIUS = 120;
+export const SHOTGUN_MAX_TARGETS = 3;
 export const HEALTH_PACK_AMOUNT = 30;
 
 // Zombie type modifiers
@@ -115,8 +116,8 @@ export const FISH_SPEED_MIN = 50;
 export const FISH_SPEED_MAX = 110;
 export const FISH_DEPTH_MIN = 0.25;
 export const FISH_DEPTH_MAX = 0.65;
-export const FISH_BASE_WIDTH = 50;
-export const FISH_BASE_HEIGHT = 30;
+export const FISH_BASE_WIDTH = 64;
+export const FISH_BASE_HEIGHT = 40;
 export const FISH_SHOOT_PENALTY = 15;          // health lost for shooting a fish
 export const FISH_SAFE_BONUS = 25;             // score bonus for fish crossing safely
 export const FISH_HURT_DURATION_MS = 800;

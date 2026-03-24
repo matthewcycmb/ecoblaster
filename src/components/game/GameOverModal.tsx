@@ -37,6 +37,14 @@ export default function GameOverModal({
   const [stage, setStage] = useState<Stage>("silent");
   const [fadeIn, setFadeIn] = useState(false);
   const [fact] = useState(() => OCEAN_FACTS[Math.floor(Math.random() * OCEAN_FACTS.length)]);
+  const timersRef = { current: [] as ReturnType<typeof setTimeout>[] };
+
+  const skipToScore = () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    setStage("score");
+    setFadeIn(true);
+  };
 
   // Auto-submit score on mount
   useEffect(() => {
@@ -53,6 +61,7 @@ export default function GameOverModal({
     requestAnimationFrame(() => setFadeIn(true));
 
     const timers: ReturnType<typeof setTimeout>[] = [];
+    timersRef.current = timers;
     let t = 0;
 
     // "The reef went silent." holds for LINE_HOLD, then fades out
@@ -99,7 +108,7 @@ export default function GameOverModal({
       fact;
 
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-50 cursor-pointer" onClick={skipToScore}>
         <p
           className="text-white text-xl sm:text-3xl font-light tracking-wide text-center px-8 max-w-lg"
           style={{
@@ -110,6 +119,7 @@ export default function GameOverModal({
         >
           {text}
         </p>
+        <p className="absolute bottom-8 text-xs text-white/30 tracking-wide">Tap to skip</p>
       </div>
     );
   }

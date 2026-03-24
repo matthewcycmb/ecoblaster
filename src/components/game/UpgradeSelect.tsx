@@ -17,10 +17,10 @@ export default function UpgradeSelect({
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-40 px-4 sm:px-6">
-      <h2 className="text-lg sm:text-3xl font-black text-cyan-400 mb-1 sm:mb-1.5 tracking-widest uppercase">
+      <h2 className="text-lg sm:text-2xl md:text-3xl font-black text-cyan-400 mb-1 sm:mb-1.5 tracking-widest uppercase">
         Choose Upgrade
       </h2>
-      <p className="text-[10px] sm:text-sm text-gray-400/70 mb-4 sm:mb-8">
+      <p className="text-xs sm:text-sm text-gray-400/70 mb-4 sm:mb-8">
         Pick one to power up your reef defense
       </p>
 
@@ -29,16 +29,16 @@ export default function UpgradeSelect({
           <button
             key={upgrade.id}
             onClick={() => onSelect(upgrade)}
-            className="w-full sm:w-64 bg-white/5 border border-white/10 hover:border-cyan-400/50 hover:bg-white/10 active:bg-white/15 rounded-2xl px-5 sm:px-8 py-3 sm:py-8 flex flex-row sm:flex-col items-center gap-3 sm:gap-3 transition-all group cursor-pointer overflow-hidden"
+            className="w-full sm:w-64 bg-white/5 border border-white/10 hover:border-cyan-400/50 hover:bg-white/10 active:bg-white/15 rounded-2xl px-5 sm:px-8 py-4 sm:py-8 flex flex-row sm:flex-col items-center gap-3 sm:gap-3 transition-all group cursor-pointer overflow-hidden"
           >
             <span className="text-3xl sm:text-5xl group-hover:scale-110 transition-transform shrink-0">
               {upgrade.icon}
             </span>
             <div className="flex flex-col sm:items-center gap-0.5 sm:gap-2 text-left sm:text-center">
-              <span className="text-white font-bold text-sm sm:text-lg whitespace-nowrap">
+              <span className="text-white font-bold text-sm sm:text-lg">
                 {upgrade.name}
               </span>
-              <span className="text-gray-400/80 text-[11px] sm:text-sm">
+              <span className="text-gray-400/80 text-xs sm:text-sm">
                 {upgrade.description}
               </span>
             </div>
@@ -54,10 +54,10 @@ export default function UpgradeSelect({
               🐟
             </span>
             <div className="flex flex-col sm:items-center gap-0.5 sm:gap-2 text-left sm:text-center">
-              <span className="text-teal-300 font-bold text-sm sm:text-lg whitespace-nowrap">
+              <span className="text-teal-300 font-bold text-sm sm:text-lg">
                 Reef Defender
               </span>
-              <span className="text-teal-400/60 text-[11px] sm:text-sm">
+              <span className="text-teal-400/60 text-xs sm:text-sm">
                 Fish ally · 500 pts
               </span>
             </div>
