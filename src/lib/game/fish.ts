@@ -51,6 +51,7 @@ export function spawnFish(canvasWidth: number, canvasHeight: number): SwimmingFi
     hitAt: 0,
     width: FISH_BASE_WIDTH,
     height: FISH_BASE_HEIGHT,
+    spriteIndex: Math.floor(Math.random() * 6),
   };
 }
 

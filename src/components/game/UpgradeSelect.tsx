@@ -13,7 +13,7 @@ export default function UpgradeSelect({
   score: number;
   onBuyDefender: () => void;
 }) {
-  const showDefender = score >= 500;
+  const showDefender = false; // hidden for now — score >= 500
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-40 px-4 sm:px-6">

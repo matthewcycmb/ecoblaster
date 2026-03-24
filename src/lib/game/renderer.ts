@@ -508,10 +508,31 @@ function drawSeaTurtle(ctx: CanvasRenderingContext2D, turtle: SeaTurtle, t: numb
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SWIMMING FISH (friendly)
+   SWIMMING FISH (friendly) — pixel art sprite sheet
    ═══════════════════════════════════════════════════════════════ */
 
+let fishSpriteSheet: HTMLImageElement | null = null;
+let fishSpriteLoading = false;
+
+function loadFishSprites(): void {
+  if (fishSpriteSheet || fishSpriteLoading || typeof window === "undefined") return;
+  fishSpriteLoading = true;
+  const img = new window.Image();
+  img.src = "/fish-sprites.png";
+  img.onload = () => { fishSpriteSheet = img; };
+}
+
+// Sprite sheet is 3 columns x 2 rows, with padding/background to crop out
+// Each cell is roughly 1/3 width x 1/2 height of the image
+const FISH_SPRITE_COLS = 3;
+const FISH_SPRITE_ROWS = 2;
+// Inset margins to crop the beige background padding (fraction of cell size)
+const FISH_CELL_INSET_X = 0.08;
+const FISH_CELL_INSET_Y = 0.06;
+
 function drawSwimmingFish(ctx: CanvasRenderingContext2D, fish: SwimmingFish, t: number): void {
+  loadFishSprites();
+
   const s = fish.screenScale;
   const w = FISH_BASE_WIDTH * s;
   const h = FISH_BASE_HEIGHT * s;
@@ -522,8 +543,7 @@ function drawSwimmingFish(ctx: CanvasRenderingContext2D, fish: SwimmingFish, t: 
   const hitSink = isHit ? hitAge * 0.04 : 0;
 
   const bob = Math.sin(t * 2.5 + fish.x * 0.01) * h * 0.08;
-  // Gentle tail wiggle
-  const wiggle = Math.sin(t * 6 + fish.x * 0.02) * 0.1;
+  const wiggle = Math.sin(t * 6 + fish.x * 0.02) * 0.06;
 
   ctx.save();
   ctx.globalAlpha = hitAlpha;
@@ -534,58 +554,33 @@ function drawSwimmingFish(ctx: CanvasRenderingContext2D, fish: SwimmingFish, t: 
     ctx.scale(-1, 1);
   }
   ctx.rotate(wiggle);
+  ctx.imageSmoothingEnabled = false; // pixel art crisp
 
-  // Body — bright orange/gold so it's clearly NOT trash
-  const bodyGrad = ctx.createLinearGradient(-w * 0.3, -h * 0.3, w * 0.3, h * 0.3);
-  bodyGrad.addColorStop(0, "#FFB020");
-  bodyGrad.addColorStop(1, "#FF8800");
-  ctx.fillStyle = bodyGrad;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (fishSpriteSheet) {
+    const col = fish.spriteIndex % FISH_SPRITE_COLS;
+    const row = Math.floor(fish.spriteIndex / FISH_SPRITE_COLS);
+    const cellW = fishSpriteSheet.naturalWidth / FISH_SPRITE_COLS;
+    const cellH = fishSpriteSheet.naturalHeight / FISH_SPRITE_ROWS;
+    // Crop insets to remove background padding
+    const sx = col * cellW + cellW * FISH_CELL_INSET_X;
+    const sy = row * cellH + cellH * FISH_CELL_INSET_Y;
+    const sw = cellW * (1 - 2 * FISH_CELL_INSET_X);
+    const sh = cellH * (1 - 2 * FISH_CELL_INSET_Y);
 
-  // Tail fin
-  ctx.fillStyle = "#FF9500";
-  ctx.beginPath();
-  ctx.moveTo(-w / 2, 0);
-  ctx.lineTo(-w / 2 - w * 0.35, -h * 0.45);
-  ctx.lineTo(-w / 2 - w * 0.35, h * 0.45);
-  ctx.closePath();
-  ctx.fill();
-
-  // Dorsal fin
-  ctx.fillStyle = "#FFA030";
-  ctx.beginPath();
-  ctx.moveTo(-w * 0.1, -h * 0.4);
-  ctx.lineTo(w * 0.15, -h * 0.7);
-  ctx.lineTo(w * 0.25, -h * 0.35);
-  ctx.closePath();
-  ctx.fill();
-
-  // Eye
-  ctx.fillStyle = "#FFFFFF";
-  ctx.beginPath();
-  ctx.arc(w * 0.22, -h * 0.08, 5 * s, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#111111";
-  ctx.beginPath();
-  ctx.arc(w * 0.24, -h * 0.08, 2.5 * s, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mouth — small smile
-  ctx.strokeStyle = "#CC6600";
-  ctx.lineWidth = 1.5 * s;
-  ctx.beginPath();
-  ctx.arc(w * 0.35, h * 0.05, 4 * s, 0, Math.PI * 0.6);
-  ctx.stroke();
-
-  // Red flash when hit
-  if (isHit && hitAge < 200) {
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.fillStyle = "rgba(255, 30, 30, 0.6)";
+    ctx.drawImage(fishSpriteSheet, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
+  } else {
+    // Fallback: simple orange circle while loading
+    ctx.fillStyle = "#FFB020";
     ctx.beginPath();
     ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // Red tint flash when hit
+  if (isHit && hitAge < 200) {
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = "rgba(255, 30, 30, 0.6)";
+    ctx.fillRect(-w / 2, -h / 2, w, h);
     ctx.globalCompositeOperation = "source-over";
   }
 

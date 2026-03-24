@@ -41,6 +41,7 @@ export interface SwimmingFish {
   hitAt: number;       // timestamp when shot (for hurt animation)
   width: number;
   height: number;
+  spriteIndex: number; // 0-5, which fish sprite from the sheet
 }
 
 export interface ReefDefender {
