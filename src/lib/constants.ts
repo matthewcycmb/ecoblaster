@@ -108,6 +108,20 @@ export const TURTLE_BASE_HEIGHT = 60;
 export const TURTLE_HURT_DURATION_MS = 1500;
 export const TURTLE_MIN_WAVE = 3;
 
+// Swimming fish (friendly — don't shoot!)
+export const FISH_SPAWN_CHANCE = 0.25;         // chance per spawn window
+export const FISH_MAX_ON_SCREEN = 3;
+export const FISH_SPEED_MIN = 50;
+export const FISH_SPEED_MAX = 110;
+export const FISH_DEPTH_MIN = 0.25;
+export const FISH_DEPTH_MAX = 0.65;
+export const FISH_BASE_WIDTH = 50;
+export const FISH_BASE_HEIGHT = 30;
+export const FISH_SHOOT_PENALTY = 15;          // health lost for shooting a fish
+export const FISH_SAFE_BONUS = 25;             // score bonus for fish crossing safely
+export const FISH_HURT_DURATION_MS = 800;
+export const FISH_PENALTY_FLASH_MS = 300;
+
 // Hit effects
 export const HIT_FLASH_DURATION_MS = 80;
 export const SCREEN_SHAKE_DURATION_MS = 120;

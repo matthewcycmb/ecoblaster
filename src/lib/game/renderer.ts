@@ -1,4 +1,4 @@
-import { GameState, TrashItem, SeaTurtle, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState, ReefDefender } from "@/lib/types";
+import { GameState, TrashItem, SeaTurtle, SwimmingFish, HitToast, ComboState, ActivePowerUp, PowerUp, PowerUpType, HandGunState, ReefDefender } from "@/lib/types";
 import {
   TURTLE_BASE_WIDTH,
   TURTLE_BASE_HEIGHT,
@@ -17,6 +17,10 @@ import {
   SCREEN_SHAKE_DURATION_MS,
   SCREEN_SHAKE_INTENSITY,
   HIT_FLASH_DURATION_MS,
+  FISH_BASE_WIDTH,
+  FISH_BASE_HEIGHT,
+  FISH_HURT_DURATION_MS,
+  FISH_PENALTY_FLASH_MS,
 } from "@/lib/constants";
 
 /* ─── Trash Item Colors ─── */
@@ -178,6 +182,13 @@ export function renderFrame(
     }
   }
 
+  // Swimming fish (friendly — don't shoot!)
+  for (const fish of state.swimmingFish) {
+    if (fish.alive || fish.hitAt > 0) {
+      drawSwimmingFish(ctx, fish, t);
+    }
+  }
+
   // Dual pistols when both hands active, single centered pistol otherwise
   if (hasAim && hasSecondAim) {
     // Two pistols — left and right
@@ -247,6 +258,13 @@ export function renderFrame(
   if (now < state.hitFlashUntil) {
     const flashAlpha = 0.15 * ((state.hitFlashUntil - now) / HIT_FLASH_DURATION_MS);
     ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  }
+
+  // Red flash on fish penalty
+  if (now < state.fishPenaltyFlashUntil) {
+    const flashAlpha = 0.25 * ((state.fishPenaltyFlashUntil - now) / FISH_PENALTY_FLASH_MS);
+    ctx.fillStyle = `rgba(255, 40, 40, ${flashAlpha})`;
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   }
 
@@ -483,6 +501,91 @@ function drawSeaTurtle(ctx: CanvasRenderingContext2D, turtle: SeaTurtle, t: numb
     ctx.globalCompositeOperation = "source-atop";
     ctx.fillStyle = `rgba(255, 60, 60, 0.5)`;
     ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SWIMMING FISH (friendly)
+   ═══════════════════════════════════════════════════════════════ */
+
+function drawSwimmingFish(ctx: CanvasRenderingContext2D, fish: SwimmingFish, t: number): void {
+  const s = fish.screenScale;
+  const w = FISH_BASE_WIDTH * s;
+  const h = FISH_BASE_HEIGHT * s;
+
+  const isHit = fish.hitAt > 0;
+  const hitAge = isHit ? Date.now() - fish.hitAt : 0;
+  const hitAlpha = isHit ? Math.max(0, 1 - hitAge / FISH_HURT_DURATION_MS) : 1;
+  const hitSink = isHit ? hitAge * 0.04 : 0;
+
+  const bob = Math.sin(t * 2.5 + fish.x * 0.01) * h * 0.08;
+  // Gentle tail wiggle
+  const wiggle = Math.sin(t * 6 + fish.x * 0.02) * 0.1;
+
+  ctx.save();
+  ctx.globalAlpha = hitAlpha;
+  ctx.translate(fish.x, fish.y + bob + hitSink);
+
+  // Face direction of movement
+  if (fish.direction === -1) {
+    ctx.scale(-1, 1);
+  }
+  ctx.rotate(wiggle);
+
+  // Body — bright orange/gold so it's clearly NOT trash
+  const bodyGrad = ctx.createLinearGradient(-w * 0.3, -h * 0.3, w * 0.3, h * 0.3);
+  bodyGrad.addColorStop(0, "#FFB020");
+  bodyGrad.addColorStop(1, "#FF8800");
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tail fin
+  ctx.fillStyle = "#FF9500";
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, 0);
+  ctx.lineTo(-w / 2 - w * 0.35, -h * 0.45);
+  ctx.lineTo(-w / 2 - w * 0.35, h * 0.45);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dorsal fin
+  ctx.fillStyle = "#FFA030";
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.1, -h * 0.4);
+  ctx.lineTo(w * 0.15, -h * 0.7);
+  ctx.lineTo(w * 0.25, -h * 0.35);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  ctx.arc(w * 0.22, -h * 0.08, 5 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#111111";
+  ctx.beginPath();
+  ctx.arc(w * 0.24, -h * 0.08, 2.5 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mouth — small smile
+  ctx.strokeStyle = "#CC6600";
+  ctx.lineWidth = 1.5 * s;
+  ctx.beginPath();
+  ctx.arc(w * 0.35, h * 0.05, 4 * s, 0, Math.PI * 0.6);
+  ctx.stroke();
+
+  // Red flash when hit
+  if (isHit && hitAge < 200) {
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = "rgba(255, 30, 30, 0.6)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalCompositeOperation = "source-over";
   }
 

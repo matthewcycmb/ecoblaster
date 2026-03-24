@@ -7,6 +7,7 @@ import {
 } from "./zombies";
 import { checkPowerUpCollection } from "./powerups";
 import { moveTurtles, checkTurtleTrashCollision, maybeSpawnTurtles } from "./turtles";
+import { moveFish, maybeSpawnFish } from "./fish";
 import { renderFrame } from "./renderer";
 import { updateDefenders } from "./defenders";
 import { applyUpgrades } from "./upgrades";
@@ -171,6 +172,10 @@ function updatePlaying(
   // Fish are weakening — trash drifts slower when reef health is critical
   const lowHealthFactor = state.health < 30 ? 0.5 : 1.0;
   moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs * lowHealthFactor, slowMoActive);
+
+  // --- Move swimming fish + spawn new ones ---
+  moveFish(state.swimmingFish, canvasWidth, deltaMs);
+  maybeSpawnFish(state, canvasWidth, canvasHeight);
 
   // --- Move sea turtles and check collisions ---
   moveTurtles(state.seaTurtles, canvasWidth, deltaMs);

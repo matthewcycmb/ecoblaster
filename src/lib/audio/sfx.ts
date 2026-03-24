@@ -81,6 +81,25 @@ export function playHit(): void {
   osc.stop(ctx.currentTime + 0.1);
 }
 
+export function playFishPenalty(): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+
+  // Descending buzzy tone — sounds "wrong"
+  const osc = ctx.createOscillator();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(400, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.25);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.25);
+}
+
 export function playZombieGroan(): void {
   const ctx = getCtx();
   if (!ctx) return;

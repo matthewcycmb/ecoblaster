@@ -60,5 +60,7 @@ export function createInitialState(): GameState {
     currentCharges: 2,
     currentEffectUntil: 0,
     reefDefenders: [],
+    swimmingFish: [],
+    fishPenaltyFlashUntil: 0,
   };
 }

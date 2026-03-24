@@ -29,6 +29,20 @@ export interface Upgrade {
   icon: string;
 }
 
+export interface SwimmingFish {
+  id: string;
+  x: number;
+  y: number;
+  depth: number;
+  screenScale: number;
+  speed: number;
+  direction: 1 | -1;
+  alive: boolean;
+  hitAt: number;       // timestamp when shot (for hurt animation)
+  width: number;
+  height: number;
+}
+
 export interface ReefDefender {
   id: string;
   laneX: number;
@@ -138,6 +152,9 @@ export interface GameState {
   currentEffectUntil: number;
   // Reef defenders
   reefDefenders: ReefDefender[];
+  // Swimming fish (don't shoot!)
+  swimmingFish: SwimmingFish[];
+  fishPenaltyFlashUntil: number;
 }
 
 export interface HandGunState {

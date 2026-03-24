@@ -19,9 +19,12 @@ import { maybeDropPowerUp } from "@/lib/game/powerups";
 import { applyUpgrades } from "@/lib/game/upgrades";
 import { activateOceanCurrent } from "@/lib/game/current";
 import { createDefender } from "@/lib/game/defenders";
+import { findFishAtPoint } from "@/lib/game/fish";
 import { loadSettings, saveSettings } from "@/lib/settings/store";
 import { leaderboardNameSchema } from "@/lib/settings/schema";
 import {
+  FISH_SHOOT_PENALTY,
+  FISH_PENALTY_FLASH_MS,
   MUZZLE_FLASH_DURATION_MS,
   CANVAS_MAX_WIDTH,
   HAND_NOT_DETECTED_TIMEOUT_MS,
@@ -45,6 +48,7 @@ import {
   playGameOverStinger,
   playExplosion,
   playComboChime,
+  playFishPenalty,
   initAudio,
   startBackgroundMusic,
   stopBackgroundMusic,
@@ -373,6 +377,36 @@ export default function GameCanvas() {
     } else {
       targetX = canvas.width / 2;
       targetY = canvas.height / 2;
+    }
+
+    // Check fish hit FIRST — penalty for shooting friendly fish
+    const fishHit = findFishAtPoint(state.swimmingFish, targetX, targetY);
+    if (fishHit) {
+      fishHit.alive = false;
+      fishHit.hitAt = now;
+      state.health = Math.max(0, state.health - FISH_SHOOT_PENALTY);
+      state.fishPenaltyFlashUntil = now + FISH_PENALTY_FLASH_MS;
+      // Break combo
+      state.combo.count = 0;
+      state.combo.multiplier = 1;
+      state.comboResetFlashUntil = now + 200;
+      playFishPenalty();
+      state.hitToasts.push({
+        id: `fish-penalty-${now}-${fishHit.id}`,
+        x: fishHit.x,
+        y: fishHit.y - 30,
+        createdAt: now,
+        text: `Don't shoot fish! -${FISH_SHOOT_PENALTY} HP`,
+        color: "#FF3333",
+      });
+      if (state.health <= 0) {
+        state.phase = "game-over";
+        setPhase("game-over");
+        playGameOverStinger();
+        fadeOutBackgroundMusic(2000);
+        saveHighScore(state.score);
+      }
+      return; // Don't check trash — shot wasted on fish
     }
 
     // Shotgun blast
