@@ -17,17 +17,7 @@ export type GamePhase =
   | "playing"
   | "paused"
   | "wave-countdown"
-  | "upgrade-select"
   | "game-over";
-
-export type UpgradeId = "wider-hitbox" | "faster-fire" | "health-regen" | "longer-combos" | "splash-damage" | "score-bonus" | "tougher-reef";
-
-export interface Upgrade {
-  id: UpgradeId;
-  name: string;
-  description: string;
-  icon: string;
-}
 
 export interface SwimmingFish {
   id: string;
@@ -145,9 +135,18 @@ export interface GameState {
   lastBargeSpawnTime: number;
   comboFlashUntil: number;
   comboResetFlashUntil: number;
-  // Upgrades
-  upgrades: UpgradeId[];
-  pendingUpgradeChoices: Upgrade[] | null;
+  // Time freeze (hi-five gesture)
+  timeFreezeActive: boolean;
+  timeFreezeUntil: number;
+  timeFreezeCooldownUntil: number;
+  // Snap-to-clear (pinch gesture)
+  snapClearCooldownUntil: number;
+  snapClearFlashUntil: number;
+  snapClearOriginX: number;
+  snapClearOriginY: number;
+  // Tsunami clap
+  tsunamiCooldownUntil: number;
+  tsunamiEffectUntil: number;
   // Ocean current
   currentCharges: number;
   currentEffectUntil: number;

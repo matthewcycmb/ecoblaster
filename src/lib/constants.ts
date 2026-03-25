@@ -62,6 +62,23 @@ export const SHOTGUN_BLAST_RADIUS = 120;
 export const SHOTGUN_MAX_TARGETS = 3;
 export const HEALTH_PACK_AMOUNT = 30;
 
+// Time freeze
+export const TIME_FREEZE_DURATION_MS = 3000;
+export const TIME_FREEZE_COOLDOWN_MS = 20000;
+
+// Snap-to-clear (pinch gesture) — deals 1 damage to all trash
+export const SNAP_CLEAR_COOLDOWN_MS = 30000;
+export const SNAP_CLEAR_FLASH_MS = 400;
+export const SNAP_CLEAR_SHAKE_MS = 300;
+export const SNAP_CLEAR_SHAKE_INTENSITY = 8;
+
+// Tsunami (thumbs-up hold) — kills all trash on screen
+export const TSUNAMI_COOLDOWN_MS = 60000;
+export const TSUNAMI_EFFECT_MS = 1200;
+export const TSUNAMI_SHAKE_MS = 500;
+export const TSUNAMI_SHAKE_INTENSITY = 12;
+export const TSUNAMI_CHARGE_MS = 1500; // hold thumbs-up for 1.5s to trigger
+
 // Zombie type modifiers
 export const FAST_SPEED_MULT = 1.8;
 export const FAST_SIZE_MULT = 0.75;

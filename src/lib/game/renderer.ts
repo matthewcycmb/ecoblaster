@@ -21,6 +21,9 @@ import {
   FISH_BASE_HEIGHT,
   FISH_HURT_DURATION_MS,
   FISH_PENALTY_FLASH_MS,
+  TIME_FREEZE_DURATION_MS,
+  SNAP_CLEAR_FLASH_MS,
+  TSUNAMI_EFFECT_MS,
 } from "@/lib/constants";
 
 /* ─── Trash Item Colors ─── */
@@ -275,6 +278,112 @@ export function renderFrame(
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   }
 
+  // Snap-to-clear shockwave
+  if (now < state.snapClearFlashUntil) {
+    const elapsed = SNAP_CLEAR_FLASH_MS - (state.snapClearFlashUntil - now);
+    const progress = elapsed / SNAP_CLEAR_FLASH_MS;
+
+    // Expanding ring from hand position
+    const maxRadius = Math.max(canvasWidth, canvasHeight);
+    const radius = maxRadius * progress;
+    const ringWidth = 6 * (1 - progress);
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(0, 255, 200, ${0.7 * (1 - progress)})`;
+    ctx.lineWidth = ringWidth;
+    ctx.beginPath();
+    ctx.arc(state.snapClearOriginX, state.snapClearOriginY, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Brief screen flash (first 100ms)
+    if (elapsed < 100) {
+      const flashAlpha = 0.3 * (1 - elapsed / 100);
+      ctx.fillStyle = `rgba(200, 255, 240, ${flashAlpha})`;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+  }
+
+  // Tsunami wave effect
+  if (now < state.tsunamiEffectUntil) {
+    const elapsed = TSUNAMI_EFFECT_MS - (state.tsunamiEffectUntil - now);
+    const progress = elapsed / TSUNAMI_EFFECT_MS;
+
+    ctx.save();
+
+    // Wave sweeps from right to left across the screen
+    const waveX = canvasWidth * (1.3 - progress * 1.6); // starts off-screen right, exits left
+    const waveWidth = canvasWidth * 0.35;
+
+    // Draw multiple wave layers for depth
+    for (let layer = 0; layer < 3; layer++) {
+      const offset = layer * 25;
+      const layerAlpha = (0.5 - layer * 0.15) * Math.min(1, (1 - progress) * 3);
+      const r = layer === 0 ? 20 : layer === 1 ? 60 : 100;
+      const g = layer === 0 ? 140 : layer === 1 ? 180 : 220;
+      const b = 255;
+
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${layerAlpha})`;
+      ctx.beginPath();
+      ctx.moveTo(waveX + offset, 0);
+      // Wavy leading edge
+      for (let y = 0; y <= canvasHeight; y += 8) {
+        const wobble = Math.sin(y * 0.025 + elapsed * 0.008 + layer * 2) * 40;
+        ctx.lineTo(waveX + offset + wobble, y);
+      }
+      // Flat trailing edge
+      ctx.lineTo(waveX + offset - waveWidth, canvasHeight);
+      ctx.lineTo(waveX + offset - waveWidth, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Foam/spray particles along the wave front
+    const foamCount = 20;
+    for (let i = 0; i < foamCount; i++) {
+      const seed = i * 7919 + 13;
+      const fy = ((seed * 31) % canvasHeight);
+      const wobble = Math.sin(fy * 0.025 + elapsed * 0.008) * 40;
+      const fx = waveX + wobble + ((seed * 17) % 60) - 30;
+      const fSize = 2 + ((seed * 23) % 4);
+      const fAlpha = 0.6 * Math.min(1, (1 - progress) * 3);
+      ctx.fillStyle = `rgba(200, 240, 255, ${fAlpha})`;
+      ctx.beginPath();
+      ctx.arc(fx, fy, fSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // White flash for the first 150ms
+    if (elapsed < 150) {
+      const flashAlpha = 0.4 * (1 - elapsed / 150);
+      ctx.fillStyle = `rgba(180, 220, 255, ${flashAlpha})`;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+
+    // Blue tint overlay that fades
+    if (progress < 0.7) {
+      const tintAlpha = 0.15 * (1 - progress / 0.7);
+      ctx.fillStyle = `rgba(0, 80, 200, ${tintAlpha})`;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+  }
+
+  // Time freeze overlay — blue tint while active, white flash on activation
+  if (state.timeFreezeActive) {
+    const activationTime = state.timeFreezeUntil - TIME_FREEZE_DURATION_MS;
+    const msSinceActivation = now - activationTime;
+    // White flash for the first 150ms
+    if (msSinceActivation < 150) {
+      const flashAlpha = 0.35 * (1 - msSinceActivation / 150);
+      ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+    // Persistent blue tint
+    ctx.fillStyle = "rgba(100, 180, 255, 0.12)";
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  }
 
   // Desaturation overlay — ocean dying as health drops below 50
   if (state.health < 50) {
@@ -722,8 +831,9 @@ function drawReefDefender(ctx: CanvasRenderingContext2D, defender: ReefDefender,
 
 function drawComboDisplay(ctx: CanvasRenderingContext2D, combo: ComboState, canvasWidth: number, canvasHeight: number): void {
   const now = Date.now();
-  const x = canvasWidth / 2;
-  const y = canvasHeight * 0.15;
+  // Position top-right, below the wave/pause bar to avoid webcam PIP overlap
+  const x = canvasWidth - 80;
+  const y = 90;
 
   // Punch animation: scale up 1.3x on kill, spring back over 150ms
   const killAge = now - combo.lastKillTime;
@@ -761,20 +871,20 @@ function drawComboDisplay(ctx: CanvasRenderingContext2D, combo: ComboState, canv
     }
   }
 
-  // Large kill counter (72px+)
-  const fontSize = Math.max(72, 72 + combo.count * 1.5);
+  // Kill counter (capped at 64px)
+  const fontSize = Math.min(64, 48 + combo.count * 0.5);
   ctx.font = `bold ${Math.round(fontSize)}px Inter, system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.strokeStyle = "rgba(0,0,0,0.85)";
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 5;
   ctx.lineJoin = "round";
   ctx.strokeText(`${combo.count}`, 0, 0);
   ctx.fillStyle = "#FFFFFF";
   ctx.fillText(`${combo.count}`, 0, 0);
 
   // Multiplier label
-  ctx.font = "bold 22px Inter, system-ui, sans-serif";
+  ctx.font = "bold 16px Inter, system-ui, sans-serif";
   ctx.strokeStyle = "rgba(0,0,0,0.7)";
   ctx.lineWidth = 3;
   const multText = `x${combo.multiplier} COMBO`;
@@ -799,9 +909,9 @@ function drawComboDisplay(ctx: CanvasRenderingContext2D, combo: ComboState, canv
   }
 
   if (nextThreshold > 0) {
-    const barW = 120;
-    const barH = 6;
-    const barY = fontSize * 0.45 + 18;
+    const barW = 90;
+    const barH = 5;
+    const barY = fontSize * 0.45 + 14;
     const progress = (combo.count - prevThreshold) / (nextThreshold - prevThreshold);
 
     ctx.fillStyle = "rgba(0,0,0,0.5)";

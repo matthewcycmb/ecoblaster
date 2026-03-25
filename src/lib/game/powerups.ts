@@ -10,9 +10,7 @@ import { playPowerUpCollect } from "@/lib/audio/sfx";
 
 export function maybeDropPowerUp(state: GameState, deathX: number, deathY: number, zombieId: string, difficulty: string = "normal"): void {
   if (Math.random() >= POWERUP_DROP_CHANCE) return;
-  const types: PowerUpType[] = difficulty === "easy"
-    ? ["rapid-fire", "slow-mo", "health-pack"]
-    : ["rapid-fire", "shotgun-blast", "slow-mo", "health-pack"];
+  const types: PowerUpType[] = ["rapid-fire", "slow-mo", "health-pack"];
   const type = types[Math.floor(Math.random() * types.length)];
   state.powerUps.push({
     id: `pu-${Date.now()}-${zombieId}`,

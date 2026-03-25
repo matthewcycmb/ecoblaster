@@ -26,6 +26,9 @@ import {
 
 export interface GestureResult {
   isFingerGun: boolean;
+  isOpenPalm: boolean;
+  isPinchRelease: boolean;
+  isThumbsUp: boolean;
   indexTipX: number;
   indexTipY: number;
 }
@@ -53,11 +56,24 @@ export class GestureDetector {
   private poseCandidate = false;      // what the raw detection is saying
   private poseCandidateFrames = 0;    // how many frames candidate has been consistent
   private smoothedHandSize2D: number | null = null;
+  // Separate hysteresis for open-palm
+  private palmState = false;
+  private palmCandidate = false;
+  private palmCandidateFrames = 0;
+  // Pinch gesture state
+  private pinchState = false;
+  private pinchCandidate = false;
+  private pinchCandidateFrames = 0;
+  private pinchWasActive = false;
+  // Thumbs-up gesture state
+  private thumbsUpState = false;
+  private thumbsUpCandidate = false;
+  private thumbsUpCandidateFrames = 0;
 
   update(landmarks: Landmark[]): GestureResult {
     if (!landmarks || landmarks.length < 21) {
       this.smoothedLandmarks = null;
-      return { isFingerGun: false, indexTipX: 0.5, indexTipY: 0.5 };
+      return { isFingerGun: false, isOpenPalm: false, isPinchRelease: false, isThumbsUp: false, indexTipX: 0.5, indexTipY: 0.5 };
     }
 
     // Smooth landmarks to reduce jitter
@@ -110,8 +126,47 @@ export class GestureDetector {
 
     const rawPose = indexExtended && middleCurled && ringCurled && pinkyCurled && thumbAcceptable;
 
+    // Open-palm detection: all five fingers extended
+    const middleExtended = isFingerExtended(
+      smoothed[MIDDLE_TIP], smoothed[MIDDLE_DIP], smoothed[MIDDLE_PIP], smoothed[MIDDLE_MCP], wrist
+    );
+    const ringExtended = isFingerExtended(
+      smoothed[RING_TIP], smoothed[RING_DIP], smoothed[RING_PIP], smoothed[RING_MCP], wrist
+    );
+    const pinkyExtended = isFingerExtended(
+      smoothed[PINKY_TIP], smoothed[PINKY_DIP], smoothed[PINKY_PIP], smoothed[PINKY_MCP], wrist
+    );
+    const thumbExtendedForPalm = thumbExtension > handScale * 0.4;
+    const rawOpenPalm = indexExtended && middleExtended && ringExtended && pinkyExtended && thumbExtendedForPalm;
+
+    // Pinch detection: thumb tip and index tip close together (2D only — z is noisy)
+    const indexTipLm = smoothed[INDEX_TIP];
+    const pinchDist = Math.sqrt(
+      (thumbTip.x - indexTipLm.x) ** 2 + (thumbTip.y - indexTipLm.y) ** 2
+    );
+    const rawPinch = pinchDist < handScale * 0.55;
+
+    // Thumbs-up detection: thumb extended, all four fingers curled, index NOT extended
+    // Distinct from finger-gun (index extended) and open palm (all extended)
+    const rawThumbsUp = !indexExtended && middleCurled && ringCurled && pinkyCurled
+      && thumbExtension > handScale * 0.5;
+
     // Apply hysteresis to avoid flickering
-    const isFingerGun = this.applyHysteresis(rawPose);
+    const isFingerGun = rawOpenPalm ? false : this.applyHysteresis(rawPose);
+    const isOpenPalm = this.applyPalmHysteresis(rawOpenPalm);
+
+    // Suppress pinch if other gestures active (conflict guard)
+    const pinchSuppressed = isFingerGun || isOpenPalm;
+    const pinchConfirmed = pinchSuppressed ? false : this.applyPinchHysteresis(rawPinch && !pinchSuppressed);
+    let isPinchRelease = false;
+    if (this.pinchWasActive && !pinchConfirmed) {
+      isPinchRelease = true;
+    }
+    this.pinchWasActive = pinchConfirmed;
+
+    // Suppress thumbs-up if other gestures active
+    const thumbsUpSuppressed = isFingerGun || isOpenPalm || pinchConfirmed;
+    const isThumbsUp = thumbsUpSuppressed ? false : this.applyThumbsUpHysteresis(rawThumbsUp && !thumbsUpSuppressed);
 
     // Normalize aim by inverse hand size so distance from camera doesn't matter
     const indexTip = smoothed[INDEX_TIP];
@@ -124,6 +179,9 @@ export class GestureDetector {
 
     return {
       isFingerGun,
+      isOpenPalm,
+      isPinchRelease,
+      isThumbsUp,
       indexTipX: adjustedX,
       indexTipY: adjustedY,
     };
@@ -146,11 +204,78 @@ export class GestureDetector {
     return this.poseState;
   }
 
+  private applyPalmHysteresis(rawPalm: boolean): boolean {
+    if (rawPalm === this.palmCandidate) {
+      this.palmCandidateFrames++;
+    } else {
+      this.palmCandidate = rawPalm;
+      this.palmCandidateFrames = 1;
+    }
+
+    const PALM_ON_FRAMES = 3;  // require 3 consecutive frames to confirm
+    const PALM_OFF_FRAMES = 4;
+    if (rawPalm && !this.palmState && this.palmCandidateFrames >= PALM_ON_FRAMES) {
+      this.palmState = true;
+    } else if (!rawPalm && this.palmState && this.palmCandidateFrames >= PALM_OFF_FRAMES) {
+      this.palmState = false;
+    }
+
+    return this.palmState;
+  }
+
+  private applyPinchHysteresis(rawPinch: boolean): boolean {
+    if (rawPinch === this.pinchCandidate) {
+      this.pinchCandidateFrames++;
+    } else {
+      this.pinchCandidate = rawPinch;
+      this.pinchCandidateFrames = 1;
+    }
+
+    const PINCH_ON_FRAMES = 2;  // require 2 consecutive frames to confirm pinch
+    const PINCH_OFF_FRAMES = 2; // fast release detection
+    if (rawPinch && !this.pinchState && this.pinchCandidateFrames >= PINCH_ON_FRAMES) {
+      this.pinchState = true;
+    } else if (!rawPinch && this.pinchState && this.pinchCandidateFrames >= PINCH_OFF_FRAMES) {
+      this.pinchState = false;
+    }
+
+    return this.pinchState;
+  }
+
+  private applyThumbsUpHysteresis(rawThumbsUp: boolean): boolean {
+    if (rawThumbsUp === this.thumbsUpCandidate) {
+      this.thumbsUpCandidateFrames++;
+    } else {
+      this.thumbsUpCandidate = rawThumbsUp;
+      this.thumbsUpCandidateFrames = 1;
+    }
+
+    const THUMBS_UP_ON_FRAMES = 3;
+    const THUMBS_UP_OFF_FRAMES = 3;
+    if (rawThumbsUp && !this.thumbsUpState && this.thumbsUpCandidateFrames >= THUMBS_UP_ON_FRAMES) {
+      this.thumbsUpState = true;
+    } else if (!rawThumbsUp && this.thumbsUpState && this.thumbsUpCandidateFrames >= THUMBS_UP_OFF_FRAMES) {
+      this.thumbsUpState = false;
+    }
+
+    return this.thumbsUpState;
+  }
+
   reset(): void {
     this.smoothedLandmarks = null;
     this.smoothedHandSize2D = null;
     this.poseState = false;
     this.poseCandidate = false;
     this.poseCandidateFrames = 0;
+    this.palmState = false;
+    this.palmCandidate = false;
+    this.palmCandidateFrames = 0;
+    this.pinchState = false;
+    this.pinchCandidate = false;
+    this.pinchCandidateFrames = 0;
+    this.pinchWasActive = false;
+    this.thumbsUpState = false;
+    this.thumbsUpCandidate = false;
+    this.thumbsUpCandidateFrames = 0;
   }
 }

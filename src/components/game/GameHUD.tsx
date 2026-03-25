@@ -1,10 +1,11 @@
 "use client";
 
+import { TIME_FREEZE_COOLDOWN_MS, TIME_FREEZE_DURATION_MS, SNAP_CLEAR_COOLDOWN_MS, TSUNAMI_COOLDOWN_MS } from "@/lib/constants";
+
 function CoralHealthBar({ health }: { health: number }) {
-  // Coral color shifts from vibrant to bleached as health drops
-  const hue = health > 50 ? 340 + (health - 50) * 0.4 : 30 + health * 0.6; // pink-coral → pale
-  const saturation = Math.max(10, health * 0.9); // vibrant → washed out
-  const lightness = health > 25 ? 45 + (100 - health) * 0.15 : 70; // darkens → whitens (bleaching)
+  const hue = health > 50 ? 340 + (health - 50) * 0.4 : 30 + health * 0.6;
+  const saturation = Math.max(10, health * 0.9);
+  const lightness = health > 25 ? 45 + (100 - health) * 0.15 : 70;
 
   const branches = 5;
   const pct = Math.max(0, health) / 100;
@@ -16,7 +17,6 @@ function CoralHealthBar({ health }: { health: number }) {
         className="w-20 sm:w-32 h-5 sm:h-6"
         aria-label={`Reef health: ${health}%`}
       >
-        {/* Background (dead coral silhouette) */}
         {Array.from({ length: branches }).map((_, i) => {
           const x = 6 + i * 12;
           const maxH = 8 + Math.sin(i * 1.7 + 1) * 4;
@@ -32,7 +32,6 @@ function CoralHealthBar({ health }: { health: number }) {
             />
           );
         })}
-        {/* Living coral — height scales with health */}
         {Array.from({ length: branches }).map((_, i) => {
           const x = 6 + i * 12;
           const maxH = 8 + Math.sin(i * 1.7 + 1) * 4;
@@ -50,7 +49,6 @@ function CoralHealthBar({ health }: { health: number }) {
             />
           );
         })}
-        {/* Small polyp dots on living branches */}
         {health > 15 && Array.from({ length: branches }).map((_, i) => {
           const x = 9 + i * 12;
           const maxH = 8 + Math.sin(i * 1.7 + 1) * 4;
@@ -73,6 +71,138 @@ function CoralHealthBar({ health }: { health: number }) {
   );
 }
 
+function PowerUpCooldown({
+  emoji,
+  label,
+  ready,
+  active,
+  pct,
+  secondsLeft,
+  readyColor,
+  activeColor,
+  chargeProgress = 0,
+}: {
+  emoji: string;
+  label: string;
+  ready: boolean;
+  active: boolean;
+  pct: number;
+  secondsLeft: number;
+  readyColor: string;
+  activeColor: string;
+  barColor?: string;
+  chargeProgress?: number;
+}) {
+  const r = 13;
+  const circ = 2 * Math.PI * r;
+  const charging = chargeProgress > 0;
+  const displayPct = charging ? chargeProgress : pct;
+  const offset = circ * (1 - displayPct);
+  const ringColor = charging ? "#f59e0b" : ready ? readyColor : active ? activeColor : "rgba(150,150,150,0.4)";
+
+  return (
+    <div className="flex items-center gap-2.5 px-1">
+      <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
+          <circle
+            cx="18" cy="18" r={r} fill="none"
+            stroke={ringColor}
+            strokeWidth={charging ? "3.5" : "2.5"}
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            style={{ transition: charging ? "none" : "stroke-dashoffset 0.3s ease-out" }}
+          />
+        </svg>
+        <span className={`text-base z-10 ${charging ? "animate-pulse" : ready ? "animate-pulse" : active ? "" : "opacity-40"}`}>{emoji}</span>
+      </div>
+      <div className="flex flex-col gap-0.5 leading-none">
+        <span className="text-[10px] sm:text-[11px] text-white/60 font-semibold uppercase tracking-wider">{label}</span>
+        <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wide ${
+          charging ? "text-amber-400" : active ? "" : ready ? "text-white" : "text-white/40"
+        }`} style={active ? { color: activeColor } : {}}>
+          {charging ? "CHARGING" : active ? "ACTIVE" : ready ? "READY" : `${secondsLeft}s`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PowerUpBar({
+  timeFreezeActive,
+  timeFreezeCooldownUntil,
+  snapClearCooldownUntil,
+  tsunamiCooldownUntil,
+  tsunamiChargeProgress = 0,
+}: {
+  timeFreezeActive: boolean;
+  timeFreezeCooldownUntil: number;
+  snapClearCooldownUntil: number;
+  tsunamiCooldownUntil: number;
+  tsunamiChargeProgress?: number;
+}) {
+  const now = Date.now();
+
+  // Time freeze state
+  const freezeReady = !timeFreezeActive && now >= timeFreezeCooldownUntil;
+  const freezeOnCooldown = !timeFreezeActive && now < timeFreezeCooldownUntil;
+  const freezeTotalCooldown = TIME_FREEZE_COOLDOWN_MS + TIME_FREEZE_DURATION_MS;
+  const freezePct = timeFreezeActive ? 0 : freezeReady ? 1
+    : 1 - (timeFreezeCooldownUntil - now) / freezeTotalCooldown;
+  const freezeSecondsLeft = freezeOnCooldown ? Math.ceil((timeFreezeCooldownUntil - now) / 1000) : 0;
+
+  // Snap clear state
+  const snapReady = now >= snapClearCooldownUntil;
+  const snapPct = snapReady ? 1 : 1 - (snapClearCooldownUntil - now) / SNAP_CLEAR_COOLDOWN_MS;
+  const snapSecondsLeft = snapReady ? 0 : Math.ceil((snapClearCooldownUntil - now) / 1000);
+
+  // Tsunami state
+  const tsunamiReady = now >= tsunamiCooldownUntil;
+  const tsunamiPct = tsunamiReady ? 1 : 1 - (tsunamiCooldownUntil - now) / TSUNAMI_COOLDOWN_MS;
+  const tsunamiSecondsLeft = tsunamiReady ? 0 : Math.ceil((tsunamiCooldownUntil - now) / 1000);
+
+  return (
+    <div className="flex items-center gap-4 bg-black/50 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/10">
+      <PowerUpCooldown
+        emoji="✋"
+        label="Freeze"
+        ready={freezeReady}
+        active={timeFreezeActive}
+        pct={freezePct}
+        secondsLeft={freezeSecondsLeft}
+        readyColor="#22d3ee"
+        activeColor="#60a5fa"
+        barColor="#22d3ee"
+      />
+      <div className="w-px h-7 bg-white/15" />
+      <PowerUpCooldown
+        emoji={"\u{1F90F}"}
+        label="Damage"
+        ready={snapReady}
+        active={false}
+        pct={snapPct}
+        secondsLeft={snapSecondsLeft}
+        readyColor="#34d399"
+        activeColor="#34d399"
+        barColor="#34d399"
+      />
+      <div className="w-px h-7 bg-white/15" />
+      <PowerUpCooldown
+        emoji={"\uD83D\uDC4D"}
+        label="Tsunami"
+        ready={tsunamiReady}
+        active={false}
+        pct={tsunamiPct}
+        secondsLeft={tsunamiSecondsLeft}
+        readyColor="#f59e0b"
+        activeColor="#f59e0b"
+        chargeProgress={tsunamiChargeProgress}
+      />
+    </div>
+  );
+}
+
 export default function GameHUD({
   health,
   score,
@@ -83,6 +213,11 @@ export default function GameHUD({
   onToggleMusic,
   currentCharges,
   onCurrentPush,
+  timeFreezeActive,
+  timeFreezeCooldownUntil,
+  snapClearCooldownUntil,
+  tsunamiCooldownUntil,
+  tsunamiChargeProgress,
 }: {
   health: number;
   score: number;
@@ -93,6 +228,11 @@ export default function GameHUD({
   onToggleMusic: () => void;
   currentCharges?: number;
   onCurrentPush?: () => void;
+  timeFreezeActive?: boolean;
+  timeFreezeCooldownUntil?: number;
+  snapClearCooldownUntil?: number;
+  tsunamiCooldownUntil?: number;
+  tsunamiChargeProgress?: number;
 }) {
   return (
     <>
@@ -114,33 +254,46 @@ export default function GameHUD({
 
       {/* Bottom bar: Health + Score */}
       <div className="absolute bottom-12 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
-        {/* Health — living coral */}
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
           <span className="text-white font-semibold text-xs sm:text-sm whitespace-nowrap">Reef:</span>
           <CoralHealthBar health={health} />
         </div>
 
-        {/* Score */}
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 sm:px-5 py-1.5 sm:py-2 shrink-0">
           <span className="text-cyan-400 font-mono font-bold text-sm sm:text-lg">{score.toLocaleString()}</span>
         </div>
       </div>
 
-      {/* Ocean current push — bottom left */}
-      {currentCharges !== undefined && onCurrentPush && (
-        <button
-          onClick={onCurrentPush}
-          disabled={currentCharges === 0}
-          className={`pointer-events-auto absolute bottom-2 left-2 sm:bottom-3 sm:left-3 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold text-sm transition-all ${
-            currentCharges > 0
-              ? "bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/40 active:scale-95"
-              : "bg-gray-500/20 border border-gray-500/30 text-gray-400 cursor-not-allowed"
-          }`}
-          aria-label={`Ocean current push (${currentCharges} charges)`}
-        >
-          <span className="text-lg">🌊</span>
-          <span>{currentCharges}</span>
-        </button>
+      {/* Bottom left: Ocean current */}
+      <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-3 sm:left-3 flex flex-col gap-1.5">
+        {currentCharges !== undefined && onCurrentPush && (
+          <button
+            onClick={onCurrentPush}
+            disabled={currentCharges === 0}
+            className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold text-sm transition-all ${
+              currentCharges > 0
+                ? "bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/40 active:scale-95"
+                : "bg-gray-500/20 border border-gray-500/30 text-gray-400 cursor-not-allowed"
+            }`}
+            aria-label={`Ocean current push (${currentCharges} charges)`}
+          >
+            <span className="text-lg">🌊</span>
+            <span>{currentCharges}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Bottom center: Power-up cooldowns */}
+      {timeFreezeActive !== undefined && timeFreezeCooldownUntil !== undefined && snapClearCooldownUntil !== undefined && tsunamiCooldownUntil !== undefined && (
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+          <PowerUpBar
+            timeFreezeActive={timeFreezeActive}
+            timeFreezeCooldownUntil={timeFreezeCooldownUntil}
+            snapClearCooldownUntil={snapClearCooldownUntil}
+            tsunamiCooldownUntil={tsunamiCooldownUntil}
+            tsunamiChargeProgress={tsunamiChargeProgress}
+          />
+        </div>
       )}
 
       {/* Music mute toggle — bottom right */}

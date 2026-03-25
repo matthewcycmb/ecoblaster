@@ -10,13 +10,10 @@ import { moveTurtles, checkTurtleTrashCollision, maybeSpawnTurtles } from "./tur
 import { moveFish, maybeSpawnFish } from "./fish";
 import { renderFrame } from "./renderer";
 import { updateDefenders } from "./defenders";
-import { applyUpgrades } from "./upgrades";
-import { getRandomUpgradeChoices } from "./upgrades";
 import {
   DAMAGE_PER_HIT,
   HIT_TOAST_DURATION_MS,
   WAVE_COUNTDOWN_MS,
-  COMBO_DECAY_MS,
   POWERUP_LIFETIME_MS,
   BOSS_WAVE_INTERVAL,
   BOSS_SPAWN_INTERVAL_MS,
@@ -113,13 +110,13 @@ function updatePlaying(
 ): void {
   const now = Date.now();
 
-  // --- Combo decay (with longer-combos upgrade bonus) ---
-  const mods = applyUpgrades(state.upgrades);
-  const comboDecayTime = COMBO_DECAY_MS + mods.comboDecayBonus;
-  if (state.combo.count > 0 && now - state.combo.lastKillTime > comboDecayTime) {
-    state.combo.count = 0;
-    state.combo.multiplier = 1;
+  // --- Time freeze check ---
+  const freezeActive = state.timeFreezeActive && now < state.timeFreezeUntil;
+  if (!freezeActive && state.timeFreezeActive) {
+    state.timeFreezeActive = false;
   }
+
+  // Combo only resets when trash hits the reef (health loss) — no time decay
 
   // --- Power-up expiry ---
   if (state.activePowerUp && now >= state.activePowerUp.expiresAt) {
@@ -136,95 +133,95 @@ function updatePlaying(
     checkPowerUpCollection(state, a.x, a.y);
   }
 
-  // --- Spawn trash over time (batch size grows each wave) ---
-  const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
-  const spawnInterval = Math.max(1.0, config.spawnIntervalSec - (state.wave - 1) * 0.08);
-  if (
-    state.trashSpawned < totalForWave &&
-    now - state.lastSpawnTime >= spawnInterval * 1000
-  ) {
-    // Spawn multiple at once: 1 at wave 1, +1 per 3 waves (caps at 4)
-    const batchSize = Math.min(4, 1 + Math.floor(state.wave / 3));
-    const toSpawn = Math.min(batchSize, totalForWave - state.trashSpawned);
-    for (let i = 0; i < toSpawn; i++) {
-      const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
-      state.trashItems.push(z);
-      state.trashSpawned++;
+  // --- Skip movement, spawning, and reach-checks during freeze ---
+  if (!freezeActive) {
+    // --- Spawn trash over time (batch size grows each wave) ---
+    const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
+    const spawnInterval = Math.max(1.0, config.spawnIntervalSec - (state.wave - 1) * 0.08);
+    if (
+      state.trashSpawned < totalForWave &&
+      now - state.lastSpawnTime >= spawnInterval * 1000
+    ) {
+      const batchSize = Math.min(4, 1 + Math.floor(state.wave / 3));
+      const toSpawn = Math.min(batchSize, totalForWave - state.trashSpawned);
+      for (let i = 0; i < toSpawn; i++) {
+        const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
+        state.trashItems.push(z);
+        state.trashSpawned++;
+      }
+      state.lastSpawnTime = now;
     }
-    state.lastSpawnTime = now;
-  }
 
-  // --- Barge spawns smaller trash while alive ---
-  if (state.isSurgeWave && !state.surgeCleared) {
-    const barge = state.trashItems.find((z) => z.trashType === "barge" && z.alive);
-    if (barge && now - state.lastBargeSpawnTime >= BOSS_SPAWN_INTERVAL_MS) {
-      const minion = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
-      // Spawn near the barge's position
-      minion.laneX = barge.laneX + (Math.random() * 0.3 - 0.15);
-      minion.depth = barge.depth;
-      state.trashItems.push(minion);
-      state.lastBargeSpawnTime = now;
+    // --- Barge spawns smaller trash while alive ---
+    if (state.isSurgeWave && !state.surgeCleared) {
+      const barge = state.trashItems.find((z) => z.trashType === "barge" && z.alive);
+      if (barge && now - state.lastBargeSpawnTime >= BOSS_SPAWN_INTERVAL_MS) {
+        const minion = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
+        minion.laneX = barge.laneX + (Math.random() * 0.3 - 0.15);
+        minion.depth = barge.depth;
+        state.trashItems.push(minion);
+        state.lastBargeSpawnTime = now;
+      }
     }
-  }
 
-  // --- Move trash (with slow-mo check + low-health slowdown) ---
-  const slowMoActive = state.activePowerUp?.type === "slow-mo";
-  // Fish are weakening — trash drifts slower when reef health is critical
-  const lowHealthFactor = state.health < 30 ? 0.5 : 1.0;
-  moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs * lowHealthFactor, slowMoActive);
+    // --- Move trash (with slow-mo check + low-health slowdown) ---
+    const slowMoActive = state.activePowerUp?.type === "slow-mo";
+    const lowHealthFactor = state.health < 30 ? 0.5 : 1.0;
+    moveTrash(state.trashItems, canvasWidth, canvasHeight, deltaMs * lowHealthFactor, slowMoActive);
 
-  // --- Move swimming fish + spawn new ones ---
-  moveFish(state.swimmingFish, canvasWidth, deltaMs);
-  maybeSpawnFish(state, canvasWidth, canvasHeight);
+    // --- Move swimming fish + spawn new ones ---
+    moveFish(state.swimmingFish, canvasWidth, deltaMs);
+    maybeSpawnFish(state, canvasWidth, canvasHeight);
 
-  // --- Move sea turtles and check collisions ---
-  moveTurtles(state.seaTurtles, canvasWidth, deltaMs);
-  const turtleHits = checkTurtleTrashCollision(state.seaTurtles, state.trashItems);
-  for (const { turtle } of turtleHits) {
-    turtle.hurtAt = now;
-    state.health = Math.max(0, state.health - TURTLE_DAMAGE);
-    state.hitToasts.push({
-      id: `toast-turtle-${now}-${turtle.id}`,
-      x: turtle.x,
-      y: turtle.y - 40,
-      createdAt: now,
-      text: `Turtle hurt! -${TURTLE_DAMAGE} Health`,
-      color: "#FF9900",
-    });
-    if (state.health <= 0) {
-      state.phase = "game-over";
-      onStateChange("game-over");
-      return;
-    }
-  }
-
-  // --- Check trash reached player ---
-  for (const z of state.trashItems) {
-    if (!z.alive) continue;
-    if (checkTrashReachedPlayer(z)) {
-      z.alive = false;
-      // Barge deals 3x damage
-      const damage = z.trashType === "barge" ? DAMAGE_PER_HIT * 3 : DAMAGE_PER_HIT;
-      state.health = Math.max(0, state.health - damage);
-      state.trashRemainingInWave--;
-
-      // Reset combo on being hit
+    // --- Move sea turtles and check collisions ---
+    moveTurtles(state.seaTurtles, canvasWidth, deltaMs);
+    const turtleHits = checkTurtleTrashCollision(state.seaTurtles, state.trashItems);
+    for (const { turtle } of turtleHits) {
+      turtle.hurtAt = now;
+      state.health = Math.max(0, state.health - TURTLE_DAMAGE);
       state.combo.count = 0;
       state.combo.multiplier = 1;
-
       state.hitToasts.push({
-        id: `toast-${now}-${z.id}`,
-        x: canvasWidth / 2,
-        y: canvasHeight * 0.5,
+        id: `toast-turtle-${now}-${turtle.id}`,
+        x: turtle.x,
+        y: turtle.y - 40,
         createdAt: now,
-        text: z.trashType === "barge" ? "Barge impact! -60 Health" : "Trash hit the reef! -20 Health",
-        color: "#FF5A5F",
+        text: `Turtle hurt! -${TURTLE_DAMAGE} Health`,
+        color: "#FF9900",
       });
-
       if (state.health <= 0) {
         state.phase = "game-over";
         onStateChange("game-over");
         return;
+      }
+    }
+
+    // --- Check trash reached player ---
+    for (const z of state.trashItems) {
+      if (!z.alive) continue;
+      if (checkTrashReachedPlayer(z)) {
+        z.alive = false;
+        const damage = z.trashType === "barge" ? DAMAGE_PER_HIT * 3 : DAMAGE_PER_HIT;
+        state.health = Math.max(0, state.health - damage);
+        state.trashRemainingInWave--;
+
+        state.combo.count = 0;
+        state.combo.multiplier = 1;
+
+        state.hitToasts.push({
+          id: `toast-${now}-${z.id}`,
+          x: canvasWidth / 2,
+          y: canvasHeight * 0.5,
+          createdAt: now,
+          text: z.trashType === "barge" ? "Barge impact! -60 Health" : "Trash hit the reef! -20 Health",
+          color: "#FF5A5F",
+        });
+
+        if (state.health <= 0) {
+          state.phase = "game-over";
+          onStateChange("game-over");
+          return;
+        }
       }
     }
   }
@@ -232,7 +229,7 @@ function updatePlaying(
   // --- Update reef defenders ---
   updateDefenders(state, canvasWidth, canvasHeight);
 
-  // --- Remove dead trash (keep collected power-ups from this frame) ---
+  // --- Remove dead trash ---
   state.trashItems = state.trashItems.filter((z) => z.alive);
 
   // --- Animate displayed score toward actual score ---
@@ -240,9 +237,6 @@ function updatePlaying(
     const diff = state.score - state.displayedScore;
     const increment = Math.max(1, Math.ceil(diff * 0.1));
     state.displayedScore = Math.min(state.score, state.displayedScore + increment);
-  }
-  if (state.score !== state.displayedScore || (now - state.lastScoreChangeTime < 500)) {
-    // keep lastScoreChangeTime fresh while animating
   }
 
   // --- High score detection ---
@@ -252,19 +246,16 @@ function updatePlaying(
   }
 
   // --- Check wave cleared ---
+  const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
   const allSpawned = state.trashSpawned >= totalForWave;
   const allDead = state.trashItems.filter((z) => z.alive).length === 0;
-
-  // On surge waves, also require the surge to be cleared
   const surgeCondition = state.isSurgeWave ? state.surgeCleared : true;
 
   if (allSpawned && allDead && surgeCondition) {
     state.wave++;
-    // Show upgrade selection between waves
-    state.pendingUpgradeChoices = getRandomUpgradeChoices(state.upgrades);
-    state.phase = "upgrade-select";
-    state.waveTransitionUntil = Date.now() + 2000;
-    onStateChange("upgrade-select");
+    state.phase = "wave-countdown";
+    state.waveCountdownUntil = Date.now() + WAVE_COUNTDOWN_MS;
+    onStateChange("wave-countdown");
   }
 }
 
@@ -274,12 +265,8 @@ export function startWave(
   canvasHeight: number,
   config: DifficultyConfig
 ): void {
-  // Apply health-regen and tougher-reef upgrades
-  const mods = applyUpgrades(state.upgrades);
-  if (mods.healthRegenPerWave > 0) {
-    const maxHp = INITIAL_HEALTH + mods.maxHealthBonus;
-    state.health = Math.min(maxHp, state.health + mods.healthRegenPerWave);
-  }
+  // Small health regen between waves
+  state.health = Math.min(INITIAL_HEALTH, state.health + 5);
 
   // Reset ocean current charges
   state.currentCharges = 2;
@@ -289,7 +276,7 @@ export function startWave(
   state.surgeCleared = false;
 
   const totalForWave = getTrashCountForWave(state.wave, config, state.isSurgeWave);
-  state.trashRemainingInWave = totalForWave + (state.isSurgeWave ? 1 : 0); // +1 for the barge itself
+  state.trashRemainingInWave = totalForWave + (state.isSurgeWave ? 1 : 0);
   state.trashSpawned = 0;
   state.lastSpawnTime = 0;
 
@@ -301,7 +288,7 @@ export function startWave(
     playBossRoar();
   }
 
-  // Spawn first batch immediately — scales with wave
+  // Spawn first batch immediately
   const immediate = Math.min(state.wave === 1 ? 2 : 3 + Math.floor(state.wave / 2), totalForWave);
   for (let i = 0; i < immediate; i++) {
     const z = spawnTrash(canvasWidth, canvasHeight, config, undefined, state.wave);
