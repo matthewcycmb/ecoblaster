@@ -101,8 +101,8 @@ function PowerUpCooldown({
   const ringColor = charging ? "#f59e0b" : ready ? readyColor : active ? activeColor : "rgba(150,150,150,0.4)";
 
   return (
-    <div className="flex items-center gap-2.5 px-1">
-      <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+    <div className="flex items-center gap-1.5 sm:gap-2.5 px-0.5 sm:px-1">
+      <div className="relative w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center shrink-0">
         <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
           <circle cx="18" cy="18" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2.5" />
           <circle
@@ -115,10 +115,10 @@ function PowerUpCooldown({
             style={{ transition: charging ? "none" : "stroke-dashoffset 0.3s ease-out" }}
           />
         </svg>
-        <span className={`text-base z-10 ${charging ? "animate-pulse" : ready ? "animate-pulse" : active ? "" : "opacity-40"}`}>{emoji}</span>
+        <span className={`text-sm sm:text-base z-10 ${charging ? "animate-pulse" : ready ? "animate-pulse" : active ? "" : "opacity-40"}`}>{emoji}</span>
       </div>
       <div className="flex flex-col gap-0.5 leading-none">
-        <span className="text-[10px] sm:text-[11px] text-white/60 font-semibold uppercase tracking-wider">{label}</span>
+        <span className="hidden sm:block text-[10px] sm:text-[11px] text-white/60 font-semibold uppercase tracking-wider">{label}</span>
         <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wide ${
           charging ? "text-amber-400" : active ? "" : ready ? "text-white" : "text-white/40"
         }`} style={active ? { color: activeColor } : {}}>
@@ -163,7 +163,7 @@ function PowerUpBar({
   const tsunamiSecondsLeft = tsunamiReady ? 0 : Math.ceil((tsunamiCooldownUntil - now) / 1000);
 
   return (
-    <div className="flex items-center gap-4 bg-black/50 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/10">
+    <div className="flex items-center gap-1.5 sm:gap-4 bg-black/50 backdrop-blur-sm rounded-xl px-2 sm:px-4 py-1.5 sm:py-2.5 border border-white/10">
       <PowerUpCooldown
         emoji="✋"
         label="Freeze"
@@ -175,7 +175,7 @@ function PowerUpBar({
         activeColor="#60a5fa"
         barColor="#22d3ee"
       />
-      <div className="w-px h-7 bg-white/15" />
+      <div className="w-px h-5 sm:h-7 bg-white/15" />
       <PowerUpCooldown
         emoji={"\u{1F90F}"}
         label="Damage"
@@ -187,7 +187,7 @@ function PowerUpBar({
         activeColor="#34d399"
         barColor="#34d399"
       />
-      <div className="w-px h-7 bg-white/15" />
+      <div className="w-px h-5 sm:h-7 bg-white/15" />
       <PowerUpCooldown
         emoji={"\uD83D\uDC4D"}
         label="Tsunami"
@@ -253,7 +253,7 @@ export default function GameHUD({
       </div>
 
       {/* Bottom bar: Health + Score */}
-      <div className="absolute bottom-12 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
+      <div className="absolute bottom-16 sm:bottom-6 left-0 right-0 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
         <div className="bg-black/50 backdrop-blur-sm rounded-lg px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
           <span className="text-white font-semibold text-xs sm:text-sm whitespace-nowrap">Reef:</span>
           <CoralHealthBar health={health} />
@@ -265,7 +265,7 @@ export default function GameHUD({
       </div>
 
       {/* Bottom left: Ocean current */}
-      <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-3 sm:left-3 flex flex-col gap-1.5">
+      <div className="pointer-events-auto absolute bottom-10 left-2 sm:bottom-3 sm:left-3 flex flex-col gap-1.5">
         {currentCharges !== undefined && onCurrentPush && (
           <button
             onClick={onCurrentPush}
@@ -299,7 +299,7 @@ export default function GameHUD({
       {/* Music mute toggle — bottom right */}
       <button
         onClick={onToggleMusic}
-        className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-3 sm:right-3 w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors"
+        className="pointer-events-auto absolute bottom-10 right-2 sm:bottom-3 sm:right-3 w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-full text-white/70 hover:text-white hover:bg-black/60 transition-colors"
         aria-label={musicMuted ? "Unmute music" : "Mute music"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-5 sm:h-5">

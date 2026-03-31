@@ -39,6 +39,8 @@ export const CANVAS_MAX_WIDTH = 1280;
 // PIP webcam
 export const PIP_WIDTH = 220;
 export const PIP_HEIGHT = 165;
+export const PIP_WIDTH_MOBILE = 150;
+export const PIP_HEIGHT_MOBILE = 112;
 export const PIP_MARGIN = 12;
 export const PIP_BORDER_RADIUS = 10;
 

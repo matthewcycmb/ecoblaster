@@ -6,6 +6,8 @@ import {
   HIT_TOAST_DURATION_MS,
   PIP_WIDTH,
   PIP_HEIGHT,
+  PIP_WIDTH_MOBILE,
+  PIP_HEIGHT_MOBILE,
   PIP_MARGIN,
   PIP_BORDER_RADIUS,
   POWERUP_LIFETIME_MS,
@@ -832,8 +834,9 @@ function drawReefDefender(ctx: CanvasRenderingContext2D, defender: ReefDefender,
 function drawComboDisplay(ctx: CanvasRenderingContext2D, combo: ComboState, canvasWidth: number, canvasHeight: number): void {
   const now = Date.now();
   // Position top-right, below the wave/pause bar to avoid webcam PIP overlap
-  const x = canvasWidth - 80;
-  const y = 90;
+  const isMobile = canvasWidth < 500;
+  const x = isMobile ? canvasWidth - 50 : canvasWidth - 80;
+  const y = isMobile ? 70 : 90;
 
   // Punch animation: scale up 1.3x on kill, spring back over 150ms
   const killAge = now - combo.lastKillTime;
@@ -1082,23 +1085,26 @@ function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number): void
    ═══════════════════════════════════════════════════════════════ */
 
 function drawPipWebcam(ctx: CanvasRenderingContext2D, video: HTMLVideoElement, canvasWidth: number, canvasHeight: number, t: number): void {
-  const pipX = (canvasWidth - PIP_WIDTH) / 2;
+  const isMobile = canvasWidth < 500;
+  const pipW = isMobile ? PIP_WIDTH_MOBILE : PIP_WIDTH;
+  const pipH = isMobile ? PIP_HEIGHT_MOBILE : PIP_HEIGHT;
+  const pipX = (canvasWidth - pipW) / 2;
   const pipY = PIP_MARGIN + 8;
 
   ctx.save();
   ctx.shadowColor = "rgba(11, 99, 255, 0.25)"; ctx.shadowBlur = 15;
   ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-  ctx.beginPath(); ctx.roundRect(pipX - 2, pipY - 2, PIP_WIDTH + 4, PIP_HEIGHT + 4, PIP_BORDER_RADIUS + 2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(pipX - 2, pipY - 2, pipW + 4, pipH + 4, PIP_BORDER_RADIUS + 2); ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.beginPath(); ctx.roundRect(pipX, pipY, PIP_WIDTH, PIP_HEIGHT, PIP_BORDER_RADIUS); ctx.clip();
-  ctx.translate(pipX + PIP_WIDTH, pipY); ctx.scale(-1, 1);
+  ctx.beginPath(); ctx.roundRect(pipX, pipY, pipW, pipH, PIP_BORDER_RADIUS); ctx.clip();
+  ctx.translate(pipX + pipW, pipY); ctx.scale(-1, 1);
   const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
-  const scale = Math.max(PIP_WIDTH / vw, PIP_HEIGHT / vh);
-  ctx.drawImage(video, (PIP_WIDTH - vw * scale) / 2, (PIP_HEIGHT - vh * scale) / 2, vw * scale, vh * scale);
+  const scale = Math.max(pipW / vw, pipH / vh);
+  ctx.drawImage(video, (pipW - vw * scale) / 2, (pipH - vh * scale) / 2, vw * scale, vh * scale);
   ctx.restore();
 
   ctx.save(); ctx.strokeStyle = "rgba(255, 255, 255, 0.35)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(pipX, pipY, PIP_WIDTH, PIP_HEIGHT, PIP_BORDER_RADIUS); ctx.stroke(); ctx.restore();
+  ctx.beginPath(); ctx.roundRect(pipX, pipY, pipW, pipH, PIP_BORDER_RADIUS); ctx.stroke(); ctx.restore();
 
   ctx.save();
   const liveX = pipX + 8, liveY = pipY + 14;

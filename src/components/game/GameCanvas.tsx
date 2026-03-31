@@ -915,7 +915,7 @@ export default function GameCanvas() {
       {/* Dual-gun hint */}
       {showDualGunHint && (
         <div
-          className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+          className="absolute top-48 sm:top-20 left-4 sm:left-1/2 sm:-translate-x-1/2 z-30 pointer-events-none"
           style={{
             animation: "fadeInOut 4s ease-in-out forwards",
           }}
